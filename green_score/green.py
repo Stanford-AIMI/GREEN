@@ -55,7 +55,7 @@ class GREENModel(nn.Module):
             padding_side="left",
         )
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '' }}\n{% endif %}\n{% endfor %}"
+        self.tokenizer.chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '<|user|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '<|system|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '<|assistant|>\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
 
         self.categories = [
             "Clinically Significant Errors",

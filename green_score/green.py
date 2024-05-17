@@ -234,34 +234,36 @@ class GREEN(nn.Module):
 
         with torch.no_grad():
             pairs_to_process = []
-            indices_to_process = []
             final_scores = torch.zeros(len(refs))
+            output_ids_dict = {}
 
+            # Iterate over ref-hyp pairs and populate final_scores and pairs_to_process
             for i, (ref, hyp) in enumerate(zip(refs, hyps)):
                 if (ref, hyp) in pair_to_reward_dict:
-                    final_scores[i] = pair_to_reward_dict[(ref, hyp)]
+                    final_scores[i], output_ids = pair_to_reward_dict[(ref, hyp)]
+                    output_ids_dict[i] = output_ids
                 else:
-                    pairs_to_process.append((ref, hyp))
-                    indices_to_process.append(i)
+                    pairs_to_process.append((ref, hyp, i))
 
             if pairs_to_process:
-                batch = [make_prompt(ref, hyp) for ref, hyp in pairs_to_process]
+                batch = [make_prompt(ref, hyp) for ref, hyp, _ in pairs_to_process]
                 batch = [[{"from": "human", "value": prompt}, {"from": "gpt", "value": ""}] for prompt in batch]
                 batch = tokenize_batch_as_chat(self.tokenizer, batch)
 
                 greens_tensor, output_ids = self.model(batch['input_ids'], batch['attention_mask'])
 
                 if len(greens_tensor) == len(pairs_to_process):
-                    for i, (ref, hyp) in enumerate(pairs_to_process):
-                        score = greens_tensor[i]
-                        pair_to_reward_dict[(ref, hyp)] = score
-                        final_scores[indices_to_process[i]] = score
+                    for (ref, hyp, idx), score, out_id in zip(pairs_to_process, greens_tensor, output_ids):
+                        pair_to_reward_dict[(ref, hyp)] = (score, out_id)
+                        final_scores[idx] = score
+                        output_ids_dict[idx] = out_id
                 else:
                     print("An inconsistency was detected in processing pairs.")
 
-            mean_green = final_scores.mean()
-            responses = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+            responses = [output_ids_dict[i] for i in range(len(refs))]
+            responses = self.tokenizer.batch_decode(responses, skip_special_tokens=True)
 
+            mean_green = final_scores.mean()
             return mean_green, final_scores, process_responses(responses)
 
 

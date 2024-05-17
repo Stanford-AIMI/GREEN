@@ -40,6 +40,14 @@ print(explanations[0]) # LLM output for first pair
 
 ```
 
+## Benchmark
+
+
+| Model                                                                                     | Eval x | sec/sample | Batch Size* |
+|-------------------------------------------------------------------------------------------|--------|------------|-------------|
+| [StanfordAIMI/GREEN-radllama2-7b](https://huggingface.co/StanfordAIMI/GREEN-radllama2-7b) | x      | 2.3        | 16          |
+* A100 (40GB)
+
 ## Reference
 
 ```bibtex

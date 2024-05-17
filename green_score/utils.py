@@ -59,3 +59,7 @@ def tokenize_batch_as_chat(tokenizer, batch):
     )
 
     return batch
+
+
+def truncate_to_max_len(sentences, max_len):
+    return [" ".join(sentence.split()[:max_len]) for sentence in sentences]

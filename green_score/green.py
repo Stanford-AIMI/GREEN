@@ -2,7 +2,7 @@ import re
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from green_score.utils import process_responses, make_prompt, tokenize_batch_as_chat
+from green_score.utils import process_responses, make_prompt, tokenize_batch_as_chat, truncate_to_max_len
 
 # A dictionary to store rewards for pairs of reference and hypothesis reports
 pair_to_reward_dict = dict()
@@ -210,9 +210,10 @@ class GREEN(nn.Module):
         tokenizer: Tokenizer associated with the model.
     """
 
-    def __init__(self, cuda, **kwargs):
+    def __init__(self, cuda, max_len=200, **kwargs):
         super().__init__()
         self.cuda = cuda
+        self.max_len = max_len
         self.model = GREENModel(cuda, **kwargs)
         self.tokenizer = self.model.tokenizer
         if self.cuda:
@@ -231,6 +232,9 @@ class GREEN(nn.Module):
             tuple: Mean green score, tensor of green scores, and list of processed responses.
         """
         assert len(refs) == len(hyps)
+
+        refs = truncate_to_max_len(refs, self.max_len)
+        hyps = truncate_to_max_len(hyps, self.max_len)
 
         with torch.no_grad():
             pairs_to_process = []
@@ -274,7 +278,7 @@ if __name__ == '__main__':
     model = GREEN(
         model_id_or_path="StanfordAIMI/GREEN-radllama2-7b",
         do_sample=False,  # should be always False
-        batch_size=32,
+        batch_size=16,
         return_0_if_no_green_score=True,
         cuda=True,
     )

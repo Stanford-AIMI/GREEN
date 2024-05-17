@@ -1,3 +1,14 @@
+Metadata-Version: 2.1
+Name: green-score
+Version: 0.0.4
+Author: Jean-Benoit Delbrouck
+License: MIT
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+
 # GREEN: Generative Radiology Report Evaluation and Error Notation
 [[Project Page](https://stanford-aimi.github.io/green.html)][[Paper](https://arxiv.org/pdf/2405.03595)]
 
@@ -15,7 +26,7 @@ from green_score import GREEN
 model = GREEN(
     model_id_or_path="StanfordAIMI/GREEN-radllama2-7b",
     do_sample=False,  # should be always False
-    batch_size=16,
+    batch_size=32,
     return_0_if_no_green_score=True,
     cuda=True,
 )
@@ -39,14 +50,6 @@ print("Array of rewards for the given examples is: ", greens)
 print(explanations[0]) # LLM output for first pair
 
 ```
-
-## Benchmark
-
-
-| Model                                                                                     | Eval x | sec/sample | Batch Size* |
-|-------------------------------------------------------------------------------------------|--------|------------|-------------|
-| [StanfordAIMI/GREEN-radllama2-7b](https://huggingface.co/StanfordAIMI/GREEN-radllama2-7b) | x      | 2.3        | 16          |
-* A100 (40GB)
 
 ## Reference
 

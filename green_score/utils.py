@@ -10,9 +10,9 @@ def process_responses(responses):
     """
     response_list = []
     for i in responses:
-        if "" in i:
-            i = i.split("")[-1]
-        i = i.replace("</s>", "").replace("<unk>", "")
+        if "<|assistant|>" in i:
+            i = i.split("<|assistant|>")[-1]
+            i = i.replace("</s>", "").replace("<unk>", "")
         response_list.append(i)
     return response_list
 

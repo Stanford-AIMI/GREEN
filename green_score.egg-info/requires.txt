@@ -1,7 +1,0 @@
-torch
-transformers
-accelerate
-Pillow
-matplotlib
-sentencepiece
-protobuf

@@ -43,7 +43,7 @@ print(explanations[0]) # LLM output for first pair
 ## Benchmark
 
 All scores are reported on the Internal Test (GPT-4 Annotation) dataset. 
-| Model                                                                | MAE of Significant Error Counts | MAE of Insignificant Error Counts | Matched Findings | BERTScore | Time/sample (secs) | Batch Size* |
+| Model                                                                | MAE of Significant Error Counts (↓) | MAE of Insignificant Error Counts (↓) | MAE of Matched Findings (↓) | BERTScore (↑) | Time/sample (secs) | Batch Size* |
 |-------------------------------------------------------------------------------------------|------|------|------|------|-----|----|
 | [StanfordAIMI/GREEN-radllama2-7b](https://huggingface.co/StanfordAIMI/GREEN-radllama2-7b) | 0.70 | 0.20 | 0.29 | 0.83 | 2.3 | 16 |
 | StanfordAIMI/GREEN-radphi2 | 0.63 | 0.18 | 0.26 | 0.84 |  |  |

@@ -42,10 +42,14 @@ print(explanations[0]) # LLM output for first pair
 
 ## Benchmark
 
-
-| Model                                                                                     | Eval x | sec/sample | Batch Size* |
-|-------------------------------------------------------------------------------------------|--------|------------|-------------|
-| [StanfordAIMI/GREEN-radllama2-7b](https://huggingface.co/StanfordAIMI/GREEN-radllama2-7b) | x      | 2.3        | 16          |
+All scores are reported on the Internal Test (GPT-4 Annotation) dataset. 
+| Model                                                                | MAE of Significant Error Counts | MAE of Insignificant Error Counts | Matched Findings | BERTScore | Time/sample (secs) | Batch Size* |
+|-------------------------------------------------------------------------------------------|------|------|------|------|-----|----|
+| [StanfordAIMI/GREEN-radllama2-7b](https://huggingface.co/StanfordAIMI/GREEN-radllama2-7b) | 0.70 | 0.20 | 0.29 | 0.83 | 2.3 | 16 |
+| StanfordAIMI/GREEN-radphi2 | 0.63 | 0.18 | 0.26 | 0.84 |  |  |
+| StanfordAIMI/GREEN-phi2 | 0.84 | 0.20 | 0.34 | 0.80 |  |  |
+| StanfordAIMI/GREEN-llama2-7b | 1.35 | 0.15 | 1.62 | 0.78 |  |  |
+| StanfordAIMI/GREEN-mistral | 0.97 | 0.22 | 0.44 | 0.80 |  |  |
 * A100 (40GB)
 
 ## Reference

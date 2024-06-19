@@ -20,6 +20,7 @@ setup(
         'matplotlib',
         'sentencepiece',
         'protobuf',
+        'sentence_transformers'
     ],
     python_requires=">=3.8",
     packages=find_packages(),

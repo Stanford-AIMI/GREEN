@@ -22,6 +22,7 @@ model = GREEN(
     batch_size=16,
     return_0_if_no_green_score=True,
     cuda=True,
+    return_summary=True # set to true for green summary
 )
 
 refs = [

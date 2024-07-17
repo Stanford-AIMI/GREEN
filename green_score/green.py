@@ -2,7 +2,8 @@ import re
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from green_score.utils import process_responses, make_prompt, tokenize_batch_as_chat, truncate_to_max_len
+from green_score.utils import process_responses, make_prompt, tokenize_batch_as_chat, truncate_to_max_len, flatten_values_lists_of_list_dicts_to_dict, compute_largest_cluster
+import numpy as np
 
 # A dictionary to store rewards for pairs of reference and hypothesis reports
 pair_to_reward_dict = dict()
@@ -99,7 +100,7 @@ class GREENModel(nn.Module):
 
         return response_list, outputs
 
-    def parse_error_counts(self, text, category, for_reward=False):
+    def parse_error_counts(self, text, category):
         """
         Parses error counts from the generated text for a specific category.
 
@@ -153,6 +154,128 @@ class GREENModel(nn.Module):
                         if len(count) > 0:
                             sub_counts[position] = int(count[0])
             return sum(sub_counts), sub_counts
+    
+    def parse_error_sentences(self, response, category):
+        """
+        Parses error sentences from a given response based of the specified category. Extracts sentences associated with each sub-categories and returns them in a dict format.
+
+        Args:
+            text (str): The input text containing error information.
+            category (str): The category to parse within the text.
+
+        Returns:
+            dict: A dictionary where keys are sub-categories and values are lists of sentences associated with those sub-categories. If the category is "Matched Findings", returns a list of sentences directly.
+        """
+        if category not in self.categories:
+            raise ValueError(
+                f"Category {category} is not a valid category. Please choose from {self.categories}."
+            )
+        pattern = rf"\[{category}\]:\s*(.*?)(?:\n\s*\n|\Z)"
+        category_text = re.search(pattern, response, re.DOTALL)
+        sub_category_dict_sentences = {}
+        for sub_category in self.sub_categories:
+            sub_category_dict_sentences[sub_category] = []
+
+        if not category_text:
+            return sub_category_dict_sentences
+        if category_text.group(1).startswith("No"):
+            return sub_category_dict_sentences
+
+        if category == "Matched Findings":
+            return (
+                category_text.group(1).rsplit(":", 1)[-1].rsplit(".", 1)[-1].split(";")
+            )
+
+        matches = sorted(re.findall(r"\([a-f]\) .*", category_text.group(1)))
+
+        if len(matches) == 0:
+            matches = sorted(re.findall(r"\([1-6]\) .*", category_text.group(1)))
+            self.sub_categories = [
+                f"({i})" + " " for i in range(1, len(self.sub_categories) + 1)
+            ]
+
+        sub_category_dict_sentences = {}
+        for position, sub_category in enumerate(self.sub_categories):
+            # need to loop over all matches, because the sub_categories are not always in the same order
+            for match in range(len(matches)):
+                if matches[match].startswith(sub_category):
+                    # If the sub_category is found, add to dictionary
+                    sentences_list = (
+                        matches[match].rsplit(":", 1)[-1].split(".", 1)[-1].split(";")
+                    )
+                    sub_category_dict_sentences[self.sub_categories[position]] = (
+                        sentences_list
+                    )
+        
+        return sub_category_dict_sentences
+    
+    def compute_sentences(self,response):
+        # for now we only look at the significant clinical errors, which is the first category
+        return self.parse_error_sentences(response, self.categories[0])
+    
+    def get_representative_sentences(self, responses):
+        list_sentences = []
+        for i in responses:
+            sentences = self.compute_sentences(i)
+            list_sentences.append(sentences)
+
+        dict_sentences = flatten_values_lists_of_list_dicts_to_dict(list_sentences)
+
+        result_sentences_dict = {}
+
+        for i in self.sub_categories:
+            print(f"Computing clusters for {i}")
+            sentences = dict_sentences[i]
+            sentences = [i for i in sentences if i.strip() != ""]
+            _, sentences_of_largest_cluster = compute_largest_cluster(sentences)
+            result_sentences_dict[i] = sentences_of_largest_cluster
+
+        return result_sentences_dict
+    
+    def compute_accuracy(self, responses):
+        """
+        Computes the accuracy for each subcategory based on significant clinical errors and matched findings.
+
+        Args:
+            responses (list): Generated responses to evaluate.
+
+        Returns:
+            dict: accurarcies per subcategory.
+        """
+        counts = []
+        for response in responses:
+            _, sig_errors = self.parse_error_counts(response, self.categories[0])
+            counts.append(sig_errors)
+
+        counts = np.array(counts)
+
+        dict_acc = {}
+        for i in range(len(self.sub_categories)):
+            error_counts = counts[:, i]
+            # compute the accuracy for each subcategory
+            accuracy = np.mean(error_counts == 0)
+            dict_acc[self.sub_categories[i]] = accuracy
+
+        return dict_acc
+    
+    def compute_summary(self, mean_green, std_green, responses):
+        """
+        Makes green summary.
+
+        Args:
+            mean_green (int): grean average.
+            mean_std (int): grean std.
+            responses (list): list of green model responses (str)
+
+        Returns:
+            str: green summary.
+        """
+        representative_sentences = self.get_representative_sentences(responses)
+        accuracies = self.compute_accuracy(responses)
+
+        summary = f"[Summary]: Green average {mean_green} and standard variation {std_green} \\n [Clinically Significant Errors Analyses]:\n (a) False report of a finding in the candidate: {accuracies[self.sub_categories[0]]}. {representative_sentences[self.sub_categories[0]]} \n (b) Missing a finding present in the reference: {accuracies[self.sub_categories[1]]}. {representative_sentences[self.sub_categories[1]]} \n (c) Misidentification of a finding's anatomic location/position: {accuracies[self.sub_categories[2]]}. {representative_sentences[self.sub_categories[2]]} \n (d) Misassessment of the severity of a finding: {accuracies[self.sub_categories[3]]}. {representative_sentences[self.sub_categories[3]]} \n (e) Mentioning a comparison that isn't in the reference: {accuracies[self.sub_categories[4]]}. {representative_sentences[self.sub_categories[4]]} \n (f) Omitting a comparison detailing a change from a prior study: {accuracies[self.sub_categories[5]]}. {representative_sentences[self.sub_categories[5]]}."
+
+        return summary
 
     def compute_green(self, response):
         """
@@ -210,16 +333,17 @@ class GREEN(nn.Module):
         tokenizer: Tokenizer associated with the model.
     """
 
-    def __init__(self, cuda, max_len=200, **kwargs):
+    def __init__(self, cuda, max_len=200, return_summary=False, **kwargs):
         super().__init__()
         self.cuda = cuda
         self.max_len = max_len
         self.model = GREENModel(cuda, **kwargs)
         self.tokenizer = self.model.tokenizer
+        self.return_summary = return_summary
         if self.cuda:
             print("Using {} GPUs!".format(torch.cuda.device_count()))
             self.model = torch.nn.DataParallel(self.model)
-
+            
     def forward(self, refs, hyps):
         """
         Forward pass for the model, computing green scores for pairs of reference and hypothesis reports.
@@ -266,9 +390,15 @@ class GREEN(nn.Module):
 
             responses = [output_ids_dict[i] for i in range(len(refs))]
             responses = self.tokenizer.batch_decode(responses, skip_special_tokens=True)
+            responses = process_responses(responses)
 
             mean_green = final_scores.mean()
-            return mean_green, final_scores, process_responses(responses)
+            
+            summary = None
+            if self.return_summary:
+                summary = self.model.module.compute_summary(mean_green, final_scores.std(), responses)
+                
+            return mean_green, final_scores, responses, summary
 
 
 if __name__ == '__main__':
@@ -281,6 +411,7 @@ if __name__ == '__main__':
         batch_size=16,
         return_0_if_no_green_score=True,
         cuda=True,
+        return_summary=True
     )
     t = time.time()
     refs = [
@@ -304,9 +435,10 @@ if __name__ == '__main__':
                "1. Mild left basal atelectasis. Otherwise unremarkable.",
            ] * 1
 
-    mean_green, greens, text = model(refs=refs, hyps=hyps)
+    mean_green, greens, text, summary = model(refs=refs, hyps=hyps)
     print("Mean reward for the given examples is: ", mean_green)
     print("Array of rewards for the given examples is: ", greens)
+    print(summary)
     print(text[0])
     print(time.time() - t)
     print(len(hyps))

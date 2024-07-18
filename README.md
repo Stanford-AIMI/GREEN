@@ -8,7 +8,9 @@ Evaluating radiology reports is a challenging problem as factual correctness is 
 ## Installation
 
 ```bash
-pip install green-score
+git clone git@github.com:Stanford-AIMI/GREEN.git
+pip install -e .
+torchrun --nproc_per_node=2 src/metrics/green.py
 ```
 
 ## Usage

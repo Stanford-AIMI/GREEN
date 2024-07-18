@@ -3,15 +3,11 @@ import torch
 import torch.distributed as dist
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import pandas as pd
-from datasets import DatasetDict, Dataset
+from datasets import Dataset
 from datasets.distributed import split_dataset_by_node
 import os
 from tqdm import tqdm
-import sys
 import numpy as np
-import json
-import copy
-import sys
 from utils import (
     gather_processes,
     make_prompt,
@@ -19,7 +15,6 @@ from utils import (
     compute_largest_cluster,
     flatten_values_lists_of_list_dicts_to_dict,
 )
-import warnings
 
 
 def truncate_to_max_len(sentences, max_len):

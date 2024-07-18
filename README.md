@@ -14,16 +14,7 @@ pip install green-score
 ## Usage
 
 ```python
-from green_score import GREEN
-
-model = GREEN(
-    model_id_or_path="StanfordAIMI/GREEN-radllama2-7b",
-    do_sample=False,  # should be always False
-    batch_size=16,
-    return_0_if_no_green_score=True,
-    cuda=True,
-    return_summary=True # set to true for green summary
-)
+from green_score.green import compute
 
 refs = [
     "Interstitial opacities without changes.",
@@ -38,10 +29,9 @@ hyps = [
     "Endotracheal and nasogastric tubes have been removed. Changes of median sternotomy, with continued leftward displacement of the fourth inferiomost sternal wire. There is continued moderate-to-severe enlargement of the cardiac silhouette. Pulmonary aeration is slightly improved, with residual left lower lobe atelectasis. Stable central venous congestion and interstitial pulmonary edema. Small bilateral pleural effusions are unchanged.",
 ]
 
-mean_green, greens, explanations = model(refs=refs, hyps=hyps)
-print("Mean reward for the given examples is: ", mean_green)
-print("Array of rewards for the given examples is: ", greens)
-print(explanations[0]) # LLM output for first pair
+model_name = "StanfordAIMI/GREEN-radllama2-7b"
+
+compute(model_name, refs, hyps, output_dir=".")
 
 ```
 

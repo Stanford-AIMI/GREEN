@@ -25,7 +25,7 @@ setup(
         'torchvision',
         'opencv-python',
         'scipy',
-        'sklearn',
+        'scikit-learn',
         'pandas'
     ],
     python_requires=">=3.8",

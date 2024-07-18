@@ -8,7 +8,7 @@ from datasets.distributed import split_dataset_by_node
 import os
 from tqdm import tqdm
 import numpy as np
-from utils import (
+from .utils import (
     gather_processes,
     make_prompt,
     clean_responses,

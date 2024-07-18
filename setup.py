@@ -20,7 +20,13 @@ setup(
         'matplotlib',
         'sentencepiece',
         'protobuf',
-        'sentence_transformers'
+        'sentence_transformers',
+        'datasets',
+        'torchvision',
+        'opencv-python',
+        'scipy',
+        'sklearn',
+        'pandas'
     ],
     python_requires=">=3.8",
     packages=find_packages(),

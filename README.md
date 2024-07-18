@@ -35,6 +35,9 @@ model_name = "StanfordAIMI/GREEN-radllama2-7b"
 compute(model_name, refs, hyps, output_dir=".")
 
 ```
+```
+torchrun --nproc_per_node=2 src/metrics/green.py
+```
 
 ## Benchmark
 

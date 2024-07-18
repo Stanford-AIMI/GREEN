@@ -1,3 +1,7 @@
+import torch.distributed as dist
+import os
+import sys
+
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
@@ -5,8 +9,10 @@ from sentence_transformers import SentenceTransformer
 from scipy.spatial import distance
 import numpy as np
 
+# A dictionary to store rewards for pairs of reference and hypothesis reports
 
-def compute_largest_cluster(sentences):  
+
+def compute_largest_cluster(sentences):
     """
     Computes the largest cluster of sentences using K-means clustering, finds the sentences within the largest cluster, and orders them by their distance to the cluster center.
 
@@ -16,10 +22,10 @@ def compute_largest_cluster(sentences):
     Returns:
         tuple: A tuple containing:
             - embeddings (ndarray): Normalized embeddings of the input sentences.
-            - sentences_of_largest_cluster (list): Sentences in the largest cluster, ordered by their proximity 
+            - sentences_of_largest_cluster (list): Sentences in the largest cluster, ordered by their proximity
               to the cluster center.
     """
-    if len(sentences)==0:
+    if len(sentences) == 0:
         return None, None
     embeddings, kmeans = compute_kmeans(sentences)
     cluster_sizes = np.bincount(kmeans.labels_)
@@ -37,6 +43,7 @@ def compute_largest_cluster(sentences):
     sentences_of_largest_cluster = sentences_of_largest_cluster[closest_point_indices]
 
     return embeddings, sentences_of_largest_cluster
+
 
 def compute_kmeans(sentences):
     """
@@ -59,10 +66,11 @@ def compute_kmeans(sentences):
     kmeans = binary_search_optimal_kmeans(embeddings, min_k=0, max_k=len(sentences))
     return embeddings, kmeans
 
+
 def binary_search_optimal_kmeans(data, min_k, max_k):
     """
     Finds the optimal k for KMeans clustering using binary search on the silhouette score.
-    
+
     Args:
         data (list): cluster data.
         min_k: minimum k for binary search
@@ -73,7 +81,9 @@ def binary_search_optimal_kmeans(data, min_k, max_k):
     """
     best_k = min_k
     best_score = -1
-    best_kmeans = KMeans(n_clusters=1, random_state=42).fit(data)  # start with 1 cluster for len(data) < 2
+    best_kmeans = KMeans(n_clusters=1, random_state=42).fit(
+        data
+    )  # start with 1 cluster for len(data) < 2
 
     while min_k <= max_k:
         mid_k = (min_k + max_k) // 2
@@ -83,7 +93,7 @@ def binary_search_optimal_kmeans(data, min_k, max_k):
         kmeans = KMeans(n_clusters=mid_k, random_state=42).fit(data)
         labels = kmeans.labels_
         score = silhouette_score(data, labels)
-                
+
         if score > best_score:
             best_score = score
             best_k = mid_k
@@ -92,10 +102,8 @@ def binary_search_optimal_kmeans(data, min_k, max_k):
         else:
             max_k = mid_k - 1
 
-    print(f"Optimal k found: {best_k} with silhouette score: {best_score}")
-    print(len(data))
-    import ipdb; ipdb.set_trace()
     return best_kmeans
+
 
 def flatten_values_lists_of_list_dicts_to_dict(item):
     """
@@ -119,23 +127,60 @@ def flatten_values_lists_of_list_dicts_to_dict(item):
 
     return result
 
-def process_responses(responses):
-    """
-    Processes a list of responses by removing unwanted tokens and returns the cleaned responses.
 
-    Args:
-        responses (list): List of response strings.
+def gather_processes(local_candidates, local_references=None):
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    local_rank = int(os.environ.get("RANK", "0"))
+    global_candidates_list = None
+    global_references_list = None
 
-    Returns:
-        list: List of cleaned response strings.
-    """
-    response_list = []
-    for i in responses:
-        if "<|assistant|>" in i:
-            i = i.split("<|assistant|>")[-1]
-            i = i.replace("</s>", "").replace("<unk>", "")
-        response_list.append(i)
-    return response_list
+    if local_rank == 0:
+        # Initialize the gather list only on the root process
+        global_candidates_list = [None for _ in range(world_size)]
+        global_references_list = [None for _ in range(world_size)]
+    try:
+        dist.gather_object(local_candidates, global_candidates_list, dst=0)
+
+        if not local_references is None:
+            dist.gather_object(local_references, global_references_list, dst=0)
+
+    except Exception as e:
+        print(f"Error during result gathering: {e}")
+
+    if local_rank != 0:
+        # Exit the process
+        # print(f"Rank {dist.get_rank()} exiting.")
+        dist.destroy_process_group()  # Clean up the distributed processing group
+        sys.exit()  # Exit the process
+
+    # Flatten the gathered list
+    candidates_list = []
+    for i in global_candidates_list:
+        candidates_list.extend(i)
+
+    if not global_references_list[0] is None:
+        references_list = []
+        for i in global_references_list:
+            references_list.extend(i)
+        print(f"References list: {len(references_list)}")
+        return candidates_list, references_list
+
+    return candidates_list
+
+
+def clean_responses(response):
+    if "[Explanation]:" in response:
+        if "<|assistant|>" in response:
+            response = response.split("<|assistant|>")[-1]
+        if (
+            "[Explanation]:\n    <Explanation>\n" or "[Explanation]:\n<Explanation>"
+        ) in response:
+            response = response.split("[Explanation]:")[1]
+        else:
+            response = response.split("[Explanation]:")[-1]
+    if "<|assistant|>" in response:
+        response = response.split("<|assistant|>")[-1]
+    return response.replace("</s>", "").replace("<unk>", "")
 
 
 def make_prompt(text1, text2):
@@ -151,35 +196,6 @@ def make_prompt(text1, text2):
     """
     prompt = f"Objective: Evaluate the accuracy of a candidate radiology report in comparison to a reference radiology report composed by expert radiologists.\n\n    Process Overview: You will be presented with:\n\n    1. The criteria for making a judgment.\n    2. The reference radiology report.\n    3. The candidate radiology report.\n    4. The desired format for your assessment.\n\n    1. Criteria for Judgment:\n\n    For each candidate report, determine:\n\n    The count of clinically significant errors.\n    The count of clinically insignificant errors.\n\n    Errors can fall into one of these categories:\n\n    a) False report of a finding in the candidate.\n    b) Missing a finding present in the reference.\n    c) Misidentification of a finding's anatomic location/position.\n    d) Misassessment of the severity of a finding.\n    e) Mentioning a comparison that isn't in the reference.\n    f) Omitting a comparison detailing a change from a prior study.\n    Note: Concentrate on the clinical findings rather than the report's writing style. Evaluate only the findings that appear in both reports.\n\n    2. Reference Report:\n    {text1}\n\n    3. Candidate Report:\n    {text2}\n\n    4. Reporting Your Assessment:\n\n    Follow this specific format for your output, even if no errors are found:\n    ```\n    [Explanation]:\n    <Explanation>\n\n    [Clinically Significant Errors]:\n    (a) <Error Type>: <The number of errors>. <Error 1>; <Error 2>; ...; <Error n>\n    ....\n    (f) <Error Type>: <The number of errors>. <Error 1>; <Error 2>; ...; <Error n>\n\n    [Clinically Insignificant Errors]:\n    (a) <Error Type>: <The number of errors>. <Error 1>; <Error 2>; ...; <Error n>\n    ....\n    (f) <Error Type>: <The number of errors>. <Error 1>; <Error 2>; ...; <Error n>\n\n    [Matched Findings]:\n    <The number of matched findings>. <Finding 1>; <Finding 2>; ...; <Finding n>\n    ```\n"
     return prompt
-
-
-def tokenize_batch_as_chat(tokenizer, batch):
-    """
-    Tokenizes a batch of prompts as chat input for the model.
-
-    Args:
-        tokenizer: Tokenizer object for encoding the batch.
-        batch (list): List of prompts to be tokenized.
-
-    Returns:
-        dict: Tokenized batch with input IDs and attention masks.
-    """
-    batch = [
-        tokenizer.apply_chat_template(
-            i, tokenize=False, add_generation_prompt=True
-        )
-        for i in batch
-    ]
-
-    batch = tokenizer.batch_encode_plus(
-        batch,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=2048,
-    )
-
-    return batch
 
 
 def truncate_to_max_len(sentences, max_len):

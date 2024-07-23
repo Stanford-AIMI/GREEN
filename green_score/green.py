@@ -329,7 +329,6 @@ class Inferer:
                 f"({i})" + " " for i in range(1, len(self.sub_categories) + 1)
             ]
 
-        sub_category_dict_sentences = {}
         for position, sub_category in enumerate(self.sub_categories):
             # need to loop over all matches, because the sub_categories are not always in the same order
             for match in range(len(matches)):

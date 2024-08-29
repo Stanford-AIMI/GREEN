@@ -1,5 +1,5 @@
 # GREEN: Generative Radiology Report Evaluation and Error Notation
-[[Project Page](https://stanford-aimi.github.io/green.html)][[Paper](https://arxiv.org/pdf/2405.03595)][[Dataset] (https://huggingface.co/datasets/StanfordAIMI/GREEN)]
+[[Project Page](https://stanford-aimi.github.io/green.html)][[Paper](https://arxiv.org/pdf/2405.03595)][[Dataset](https://huggingface.co/datasets/StanfordAIMI/GREEN)]
 
 ## Abstract
 

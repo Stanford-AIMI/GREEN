@@ -49,7 +49,7 @@ All scores are reported on the Internal Test (GPT-4 Annotation) dataset.
 |  | PreRad | CXR | $\mathrm{MM}$ | $\Delta$ Sig. Error $\downarrow$ <br> $7.03 \pm 1.16$ | $\Delta$ Insig. Error $\downarrow$ <br> $0.47 \pm 0.55$ | (a) | (b) | (c) | (d) | (e) | (f) | | |  |
 | [Mistral-v0.1 (7B)](https://huggingface.co/StanfordAIMI/GREEN-Mistral-7b) |  | $\checkmark$ |  | $2.60 \pm 1.91$ | $0.87 \pm 0.94$ | 0.13 | 0.31 | 0.62 | 0.59 | 0.48 | 0.67 | 0.80 ± 0.11||2,048  |
 | [LLaMA-2 (7B](https://huggingface.co/StanfordAIMI/GREEN-Llama2-7b) |  | $\checkmark$ |  | $2.62 \pm 1.25$ | $0.47 \pm 0.52$ | 0.10 | 0.23 | 0.65 | 0.59 | 0.68 | 0.70 | 0.78 ± 0.12| 2.3| |2,048  |
-| [LLaMA-2 (7B](https://huggingface.co/StanfordAIMI/GREEN-RadLlama2-7b) | $\checkmark$ | $\checkmark$ |  | $1.54+1.36$ | $0.51 \pm 0.54$ | 0.34 | 0.38 | 0.60 | 0.54 | 0.65 | 0.68 | 0.83 ± 0.24 |2.3 | 2,048|
+| [LLaMA-2 (7B](https://huggingface.co/StanfordAIMI/GREEN-RadLlama2-7b) | $\checkmark$ | $\checkmark$ |  | $1.54+1.36$ | $0.51 \pm 0.54$ | 0.34 | 0.38 | 0.60 | 0.54 | 0.65 | 0.68 | 0.83 ± 0.24 |2.3 |16|
 | [Phi-2 (2.7B)](https://huggingface.co/StanfordAIMI/GREEN-Phi2) |  | $\checkmark$ |  | $2.10 \pm 1.39$ | $0.65 \pm 0.70$ | 0.34 | 0.08 | 0.65 | 0.57 | 0.66 | 0.53 | 0.80 ± 0.11|  |2,048|
 | [Phi-2 (2.7B)](https://huggingface.co/StanfordAIMI/GREEN-RadPhi2) | $\checkmark$ | $\checkmark$ |  | $2.08 \pm 1.15$ | $0.55 \pm 0.61$ | 0.19 | 0.18 | 0.62 | 0.57 | 0.62 | 0.61 |  0.84 ± 0.10 |   | 2,048|
 || Phi-3 |  | $\checkmark$ |  | $2.03 \pm 1.59$ | $0.54 \pm 0.56$ | 0.31 | 0.3 | 0.62 | 0.59 | 0.58 | 0.66 | | | |

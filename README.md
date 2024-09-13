@@ -52,7 +52,7 @@ All scores are reported on the Internal Test (GPT-4 Annotation) dataset.
 | [LLaMA-2 (7B](https://huggingface.co/StanfordAIMI/GREEN-RadLlama2-7b) | $\checkmark$ | $\checkmark$ |  | $1.54+1.36$ | $0.51 \pm 0.54$ | 0.34 | 0.38 | 0.60 | 0.54 | 0.65 | 0.68 | 0.83 ± 0.24 |2.3 |16|
 | [Phi-2 (2.7B)](https://huggingface.co/StanfordAIMI/GREEN-Phi2) |  | $\checkmark$ |  | $2.10 \pm 1.39$ | $0.65 \pm 0.70$ | 0.34 | 0.08 | 0.65 | 0.57 | 0.66 | 0.53 | 0.80 ± 0.11|  |2,048|
 | [Phi-2 (2.7B)](https://huggingface.co/StanfordAIMI/GREEN-RadPhi2) | $\checkmark$ | $\checkmark$ |  | $2.08 \pm 1.15$ | $0.55 \pm 0.61$ | 0.19 | 0.18 | 0.62 | 0.57 | 0.62 | 0.61 |  0.84 ± 0.10 |   | 2,048|
-|| Phi-3 |  | $\checkmark$ |  | $2.03 \pm 1.59$ | $0.54 \pm 0.56$ | 0.31 | 0.3 | 0.62 | 0.59 | 0.58 | 0.66 | | | |
+| Phi-3 |  | $\checkmark$ |  | $2.03 \pm 1.59$ | $0.54 \pm 0.56$ | 0.31 | 0.3 | 0.62 | 0.59 | 0.58 | 0.66 | | | |
 | Phi-3 |  | $\checkmark$ | $\checkmark$ | $2.28 \pm 1.22$ | $0.66 \pm 0.71$ | 0.23 | 0.19 | 0.6 | 0.57 | 0.64 | 0.26 | ||  |
 | Gemma-2b |  | $\checkmark$ |  | $2.29 \pm 1.90$ | $0.73 \pm 0.95$ | 0.27 | 0.30 | 0.61 | 0.59 | 0.57 | 0.60 | | | |
 | Gemma-2b |  | $\checkmark$ | $\checkmark$ | $2.25 \pm 1.44$ | $0.55 \pm 0.58$ | 0.32 | 0.28 | 0.57 | 0.55 | 0.66 | 0.19 | | | |

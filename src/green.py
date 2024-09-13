@@ -1,7 +1,7 @@
 import re
 import torch
 import torch.distributed as dist
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 import pandas as pd
 from datasets import Dataset
 from datasets.distributed import split_dataset_by_node
@@ -16,11 +16,26 @@ from .utils import (
     compute_largest_cluster,
     flatten_values_lists_of_list_dicts_to_dict,
 )
-
+import sys
+import warnings
 
 def truncate_to_max_len(sentences, max_len):
     return [" ".join(sentence.split()[:max_len]) for sentence in sentences]
 
+def get_rank():
+    if not dist.is_initialized():
+        return 0
+    return dist.get_rank()
+
+def is_main_process():
+    return get_rank() == 0
+
+def tqdm_on_main(*args, **kwargs):
+    if is_main_process():
+        print("==== Beginning Inference ====")
+        return tqdm(*args, **kwargs)
+    else:
+        return kwargs.get('iterable', None)
 
 class Inferer:
     def __init__(
@@ -41,7 +56,7 @@ class Inferer:
         self.process_data()
 
         self.model = model
-        self.model_name = model_name
+        self.model_name = model_name.split("/")[-1] 
         self.tokenizer = tokenizer
         self.num_examples = num_examples
 
@@ -91,19 +106,18 @@ class Inferer:
         if torch.cuda.is_available() and torch.cuda.device_count() > 1:
             dataset_dist = split_dataset_by_node(
                 self.dataset,
-                rank=int(os.environ["RANK"]),
+                rank=get_rank(),
                 world_size=int(os.environ["WORLD_SIZE"]),
             )
             print("Distributed dataset created on rank: ", int(os.environ["RANK"]))
         else:
             dataset_dist = self.dataset
 
-        print("==== Beginning Inference ====")
         local_completions = []
         local_references = []
 
-        for batch in tqdm(
-            dataset_dist.iter(batch_size=self.batch_size),
+        for batch in tqdm_on_main(
+            iterable=dataset_dist.iter(batch_size=self.batch_size),
             total=len(dataset_dist) // self.batch_size,
         ):
             local_references.extend(batch["prompt"])
@@ -118,7 +132,8 @@ class Inferer:
             self.completions = local_completions
             self.prompts = local_references
 
-        print("==== End Inference ====")
+        if is_main_process():
+            print("==== End Inference ====")
 
         if len(self.completions) != len(self.prompts):
             print("length of prompts and completions are not equal!")
@@ -163,8 +178,10 @@ class Inferer:
             **batch,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
-            do_sample=False,
-            max_new_tokens=self.max_length,
+            generation_config=GenerationConfig(
+                max_new_tokens=self.max_length,
+                do_sample=False,
+            )
         )
 
         # # decode response
@@ -407,28 +424,37 @@ class Inferer:
         representative_sentences = self.get_representative_sentences(self.completions)
         accuracies = self.compute_accuracy(self.completions)
 
-        summary = f"[Summary]: Green average {np.mean(self.green_scores)} and standard variation {np.std(self.green_scores)} \n [Clinically Significant Errors Analyses]: <accuracy>. <representative error>\n\n (a) False report of a finding in the candidate: {accuracies[self.sub_categories[0]]}. \n {representative_sentences[self.sub_categories[0]]} \n\n (b) Missing a finding present in the reference: {accuracies[self.sub_categories[1]]}. \n {representative_sentences[self.sub_categories[1]]} \n\n (c) Misidentification of a finding's anatomic location/position: {accuracies[self.sub_categories[2]]}. \n {representative_sentences[self.sub_categories[2]]} \n\n (d) Misassessment of the severity of a finding: {accuracies[self.sub_categories[3]]}. \n {representative_sentences[self.sub_categories[3]]} \n\n (e) Mentioning a comparison that isn't in the reference: {accuracies[self.sub_categories[4]]}. \n {representative_sentences[self.sub_categories[4]]} \n\n (f) Omitting a comparison detailing a change from a prior study: {accuracies[self.sub_categories[5]]}. {representative_sentences[self.sub_categories[5]]}."
+        summary = f"\n-------------{self.model_name}----------------\n [Summary]: Green average {np.mean(self.green_scores)} and standard variation {np.std(self.green_scores)} \n [Clinically Significant Errors Analyses]: <accuracy>. <representative error>\n\n (a) False report of a finding in the candidate: {accuracies[self.sub_categories[0]]}. \n {representative_sentences[self.sub_categories[0]]} \n\n (b) Missing a finding present in the reference: {accuracies[self.sub_categories[1]]}. \n {representative_sentences[self.sub_categories[1]]} \n\n (c) Misidentification of a finding's anatomic location/position: {accuracies[self.sub_categories[2]]}. \n {representative_sentences[self.sub_categories[2]]} \n\n (d) Misassessment of the severity of a finding: {accuracies[self.sub_categories[3]]}. \n {representative_sentences[self.sub_categories[3]]} \n\n (e) Mentioning a comparison that isn't in the reference: {accuracies[self.sub_categories[4]]}. \n {representative_sentences[self.sub_categories[4]]} \n\n (f) Omitting a comparison detailing a change from a prior study: {accuracies[self.sub_categories[5]]}. {representative_sentences[self.sub_categories[5]]}.\n----------------------------------\n"
 
         print(summary)
 
 
 def compute(model_name, refs, hyps, output_dir="."):
+    warnings.filterwarnings("ignore", message="A decoder-only architecture is being used*") # this warning appears, despide 'padding_side='left' and correct padding
+    from sklearn.exceptions import ConvergenceWarning
+    warnings.filterwarnings("ignore", category=ConvergenceWarning, message="Number of distinct clusters.*") # test examples are copied
+    warnings.filterwarnings("ignore", category=FutureWarning, module="transformers.tokenization_utils_base")
+
+    
     chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '<|user|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '<|system|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '<|assistant|>\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
 
     if torch.cuda.is_available() and torch.cuda.device_count() > 1:
-        dist.init_process_group(
-            backend="nccl",
-        )  # 'nccl' is recommended for GPUs
-        torch.cuda.set_device(dist.get_rank())
-        if dist.get_rank() == 0:
-            print("Distributed training with", torch.cuda.device_count(), "GPUs")
+        if not dist.is_initialized():
+            dist.init_process_group(
+                backend="nccl",
+            )  # 'nccl' is recommended for GPUs
+            torch.cuda.set_device(dist.get_rank())
+            if dist.get_rank() == 0:
+                print("Distributed training with", torch.cuda.device_count(), "GPUs")
+
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        trust_remote_code=True,
+        trust_remote_code=False if "Phi" in model_name else True,
         device_map={"": "cuda:{}".format(torch.cuda.current_device())},
         torch_dtype=torch.float16,
     )
+        
     model.eval()
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -438,12 +464,15 @@ def compute(model_name, refs, hyps, output_dir="."):
         trust_remote_code=True,
         padding_side="left",
     )
+    
     tokenizer.chat_template = chat_template
     tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.clean_up_tokenization_spaces = True
 
     inferer = Inferer(
         dataset=[refs, hyps],
         model=model,
+        model_name=model_name,
         tokenizer=tokenizer,
         output_dir=output_dir,
         batch_size=16,
@@ -455,7 +484,12 @@ def compute(model_name, refs, hyps, output_dir="."):
 
     t = time.time() - t
     print("Seconds per example: ", t / len(refs))
-
+    
+    if not is_main_process():
+        # Exit the process
+        print(f"Rank {dist.get_rank()} exiting.")
+        dist.destroy_process_group()  # Clean up the distributed processing group
+        sys.exit()  # Exit the process
 
 if __name__ == "__main__":
     import time

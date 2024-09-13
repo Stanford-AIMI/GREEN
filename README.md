@@ -38,6 +38,7 @@ compute(model_name, refs, hyps, output_dir=".")
 ```
 torchrun --nproc_per_node=2 green_score/green.py
 ```
+Adjust the `--nproc_per_node` to your number of GPUS.
 
 ## Benchmark
 

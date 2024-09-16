@@ -23,9 +23,9 @@ hyps = [
     "Endotracheal and nasogastric tubes have been removed. Changes of median sternotomy, with continued leftward displacement of the fourth inferiomost sternal wire. Advanced central venous congestion and interstitial pulmonary edema. Big bilateral pleural effusions are changed. There is discontinued moderate-to-severe enlargement of the cardiac silhouette. Pulmonary aeration is slightly increased, with residual left lower lobe atelectasis.", 
 ]
 
-model_name = "StanfordAIMI/GREEN-Mistral-7b"
+model_name = "StanfordAIMI/GREEN-RadLlama2-7b"
 # "StanfordAIMI/GREEN-RadLlama2-7b" Seconds per example:  2.67
-# "StanfordAIMI/GREEN-Phi2" Seconds per example:  2.05
-# "StanfordAIMI/GREEN-Mistral-7b"
+# "StanfordAIMI/GREEN-Phi2" Seconds per example:  1.78
+# "StanfordAIMI/GREEN-Mistral-7b" Seconds per example: 3.57
 
 compute(model_name, refs, hyps, output_dir=".")

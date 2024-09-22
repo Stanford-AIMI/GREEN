@@ -9,7 +9,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 import time
-from .utils import (
+from src.utils import (
     gather_processes,
     make_prompt,
     clean_responses,
@@ -138,12 +138,12 @@ class Inferer:
         self.process_results()
 
     def tokenize_batch_as_chat(self, batch):
-
+        print(batch)
         batch = [
             self.tokenizer.apply_chat_template(
                 i, tokenize=False, add_generation_prompt=True
             )
-            for i in batch["conv"]
+            for i in batch
         ]
 
         # tokenization
@@ -162,26 +162,27 @@ class Inferer:
         # format batch
         assert "prompt" in batch.keys(), "prompt is not in batch keys"
 
-        batch["conv"] = [
-            [
-                {"from": "human", "value": i},
-            ]
-            for i in batch["prompt"]
-        ]
-        # batch = [[{"from": "human", "value": prompt}] for prompt in batch['prompt']]
+        # batch["conv"] = [
+        #     [
+        #         {"from": "human", "value": i},
+        #     ]
+        #     for i in batch["prompt"]
+        # ]
+        
+        batch = [[{"from": "human", "value": prompt}, {"from": "gpt", "value": ""}] for prompt in batch["prompt"]]
+
         batch = self.tokenize_batch_as_chat(batch)
 
         outputs = self.model.generate(
-            **batch,
+            # **batch,
+            input_ids=batch["input_ids"],
+            attention_mask=batch["attention_mask"],
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
-            generation_config=GenerationConfig(
-                # max_new_tokens=self.max_length,
-                max_length=2048,
-                do_sample=False,
-                temperature=None,
-                top_p=None,
-            )
+            max_length=2048,
+            do_sample=False,
+            temperature=None,
+            top_p=None,
         )
 
         # # decode response
@@ -468,6 +469,7 @@ def compute(model_name, refs, hyps, output_dir="."):
     tokenizer.chat_template = chat_template
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.clean_up_tokenization_spaces = True
+    tokenizer.padding_side= "left"
 
     inferer = Inferer(
         dataset=[refs, hyps],
@@ -475,7 +477,7 @@ def compute(model_name, refs, hyps, output_dir="."):
         model_name=model_name,
         tokenizer=tokenizer,
         output_dir=output_dir,
-        batch_size=16,
+        batch_size=4,
     )
 
     t = time.time()
@@ -495,26 +497,17 @@ if __name__ == "__main__":
     import time
 
     refs = [
-        "Interstitial opacities without changes.",
-        "Interval development of segmental heterogeneous airspace opacities throughout the lungs . No significant pneumothorax or pleural effusion . Bilateral calcified pleural plaques are scattered throughout the lungs . The heart is not significantly enlarged .",
-        "Bibasilar atelectasis. Otherwise, no acute intrathoracic process.",
-        "Lung volumes are low, causing bronchovascular crowding. The cardiomediastinal silhouette is unremarkable. No focal consolidation, pleural effusion, or pneumothorax detected. Within the limitations of chest radiography, osseous structures are unremarkable.",
-        "Interval resolution of previously seen mild pulmonary edema with trace bilateral pleural effusions.",
-        "Lung volumes are low, causing bronchovascular crowding. The cardiomediastinal silhouette is unremarkable. No focal consolidation, pleural effusion, or pneumothorax detected. Within the limitations of chest radiography, osseous structures are unremarkable.",
-        "Bilateral pleural effusions, large on the right and small on the left. No definite focal consolidation identified, although evaluation is limited secondary to these effusions.",
-        "1. Mild left basal atelectasis. Otherwise unremarkable. 2. No definite displaced rib fracture though if there is continued concern dedicated rib series may be performed to further assess.",
-        "Interval development of segmental heterogeneous airspace opacities throughout the lungs . No significant pneumothorax or pleural effusion . Bilateral calcified pleural plaques are scattered throughout the lungs . The heart is not significantly enlarged .",
+        "[Breathing: Lungs] **Low lung volumes are noted.** [Breathing: Lungs] **There is diffuse prominence of the interstitium with indistinct pulmonary vascular markings.**",
+        "[Breathing: Lungs] **Low lung volumes are noted.** [Breathing: Lungs] **There is diffuse prominence of the interstitium with indistinct pulmonary vascular markings.**",
+        "[Breathing: Lungs] **Low lung volumes are noted.** [Breathing: Lungs] **There is diffuse prominence of the interstitium with indistinct pulmonary vascular markings.**",
+        "[Breathing: Lungs] **Low lung volumes are noted.** [Breathing: Lungs] **There is diffuse prominence of the interstitium with indistinct pulmonary vascular markings.**",
+        
     ]
     hyps = [
-        "Interstitial opacities at bases without changes.",
-        "Interval resolution of previously seen mild pulmonary edema with trace bilateral pleural effusions.",
-        "Bibasilar atelectasis. Otherwise, no acute intrathoracic process.",
-        "Interval development of segmental heterogeneous airspace opacities throughout the lungs . No significant pneumothorax or pleural effusion . Bilateral calcified pleural plaques are scattered throughout the lungs . The heart is not significantly enlarged .",
-        "Endotracheal and nasogastric tubes have been removed. Changes of median sternotomy, with continued leftward displacement of the fourth inferiomost sternal wire. There is continued moderate-to-severe enlargement of the cardiac silhouette. Pulmonary aeration is slightly improved, with residual left lower lobe atelectasis. Stable central venous congestion and interstitial pulmonary edema. Small bilateral pleural effusions are unchanged.",
-        "Endotracheal and nasogastric tubes have been removed. Changes of median sternotomy, with continued leftward displacement of the fourth inferiomost sternal wire. There is continued moderate-to-severe enlargement of the cardiac silhouette. Pulmonary aeration is slightly improved, with residual left lower lobe atelectasis. Stable central venous congestion and interstitial pulmonary edema. Small bilateral pleural effusions are unchanged.",
-        "In comparison with the study of ___, the increased opacification at the right base has essentially cleared with better inspiration. Cardiac silhouette remains at the upper limits of normal in size and there is again tortuosity of the aorta without vascular congestion or pleural effusion. Biapical changes, especially on the right, are stable.",
-        "1. Mild left basal atelectasis. Otherwise unremarkable.",
-        "1. Mild left basal atelectasis. Otherwise unremarkable. 2. No definite displaced rib fracture though if there is continued concern dedicated rib series may be performed to further assess.",
+        "[Breathing Lungs] There are low lung volumes, which limit the evaluation of the lung bases. [Breathing Lungs] **There is a diffuse reticular pattern seen throughout the lungs, which may represent pulmonary edema, atypical infection or a chronic interstitial process.** [Cardiac Heart Size] The cardiomediastinal silhouette is stable. [Breathing Lungs] No focal consolidation is seen. [Breathing Pleura] There are no pleural effusions. [Everything else Bones] There are no acute osseous abnormalities. [Everything else Bones] Degenerative changes of the spine are present.",
+        "[Breathing Lungs] There are low lung volumes, which limit the evaluation of the lung bases. [Breathing Lungs] **There is a diffuse reticular pattern seen throughout the lungs, which may represent pulmonary edema, atypical infection or a chronic interstitial process.** [Cardiac Heart Size] The cardiomediastinal silhouette is stable. [Breathing Lungs] No focal consolidation is seen. [Breathing Pleura] There are no pleural effusions. [Everything else Bones] There are no acute osseous abnormalities. [Everything else Bones] Degenerative changes of the spine are present.",
+        "[Breathing Lungs] There are low lung volumes, which limit the evaluation of the lung bases. [Breathing Lungs] **There is a diffuse reticular pattern seen throughout the lungs, which may represent pulmonary edema, atypical infection or a chronic interstitial process.** [Cardiac Heart Size] The cardiomediastinal silhouette is stable. [Breathing Lungs] No focal consolidation is seen. [Breathing Pleura] There are no pleural effusions. [Everything else Bones] There are no acute osseous abnormalities. [Everything else Bones] Degenerative changes of the spine are present.",
+        "[Breathing Lungs] There are low lung volumes, which limit the evaluation of the lung bases. [Breathing Lungs] **There is a diffuse reticular pattern seen throughout the lungs, which may represent pulmonary edema, atypical infection or a chronic interstitial process.** [Cardiac Heart Size] The cardiomediastinal silhouette is stable. [Breathing Lungs] No focal consolidation is seen. [Breathing Pleura] There are no pleural effusions. [Everything else Bones] There are no acute osseous abnormalities. [Everything else Bones] Degenerative changes of the spine are present."
     ]
 
     model_name = "StanfordAIMI/GREEN-radllama2-7b"

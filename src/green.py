@@ -19,9 +19,6 @@ from .utils import (
 import sys
 import warnings
 
-def truncate_to_max_len(sentences, max_len):
-    return [" ".join(sentence.split()[:max_len]) for sentence in sentences]
-
 def get_rank():
     if not dist.is_initialized():
         return 0

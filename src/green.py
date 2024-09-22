@@ -179,8 +179,11 @@ class Inferer:
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
             generation_config=GenerationConfig(
-                max_new_tokens=self.max_length,
+                # max_new_tokens=self.max_length,
+                max_length=2048,
                 do_sample=False,
+                temperature=None,
+                top_p=None,
             )
         )
 

@@ -9,7 +9,7 @@ Evaluating radiology reports is a challenging problem as factual correctness is 
 
 ```bash
 git clone https://github.com/Stanford-AIMI/GREEN.git
-pip install -e .
+pip install -r requirements.txt
 ```
 
 ## Usage

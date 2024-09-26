@@ -15,7 +15,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```python
-from green_score.green import compute
+from green_score import GREEN
 
 refs = [
     "Interstitial opacities without changes.",

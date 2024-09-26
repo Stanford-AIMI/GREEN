@@ -9,7 +9,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 import time
-from src.utils import (
+from green_score.utils import (
     gather_processes,
     make_prompt,
     clean_responses,
@@ -430,7 +430,7 @@ class Inferer:
         print(summary)
 
 
-def compute(model_name, refs, hyps, output_dir="."):
+def GREEN(model_name, refs, hyps, output_dir="."):
     warnings.filterwarnings("ignore", message="A decoder-only architecture is being used*") # this warning appears, despide 'padding_side='left' and correct padding
     from sklearn.exceptions import ConvergenceWarning
     warnings.filterwarnings("ignore", category=ConvergenceWarning, message="Number of distinct clusters.*") # test examples are copied

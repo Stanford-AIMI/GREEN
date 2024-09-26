@@ -32,7 +32,7 @@ hyps = [
 
 model_name = "StanfordAIMI/GREEN-radllama2-7b"
 
-compute(model_name, refs, hyps, output_dir=".")
+GREEN(model_name, refs, hyps, output_dir=".")
 
 ```
 ```

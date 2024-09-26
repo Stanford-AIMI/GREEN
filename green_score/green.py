@@ -138,7 +138,7 @@ class Inferer:
         return self.process_results()
 
     def tokenize_batch_as_chat(self, batch):
-        print(batch)
+
         batch = [
             self.tokenizer.apply_chat_template(
                 i, tokenize=False, add_generation_prompt=True

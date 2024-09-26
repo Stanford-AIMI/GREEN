@@ -219,10 +219,10 @@ class Inferer:
                 **self.error_counts,  # unpacking the dictionary
             }
         )
-        path = self.output_dir + f"/results_{self.model_name}.csv"
-        os.makedirs(self.output_dir, exist_ok=True)
-        print("Saving generated response to prompt to ", path)
-        results_df.to_csv(path, index=False)
+        # path = self.output_dir + f"/results_{self.model_name}.csv"
+        # os.makedirs(self.output_dir, exist_ok=True)
+        # print("Saving generated response to prompt to ", path)
+        # results_df.to_csv(path, index=False)
 
         mean, std, summary = self.compute_summary()
 

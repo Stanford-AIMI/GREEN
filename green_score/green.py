@@ -517,4 +517,5 @@ if __name__ == "__main__":
 
     model_name = "StanfordAIMI/GREEN-radllama2-7b"
 
-    compute(model_name, refs, hyps, output_dir=".")
+    mean, std, summary, result_df = GREEN(model_name, refs, hyps, output_dir=".")
+    print(summary)

@@ -135,10 +135,10 @@ class Inferer:
         if len(self.completions) != len(self.prompts):
             print("length of prompts and completions are not equal!")
 
-        self.process_results()
+        return self.process_results()
 
     def tokenize_batch_as_chat(self, batch):
-        print(batch)
+
         batch = [
             self.tokenizer.apply_chat_template(
                 i, tokenize=False, add_generation_prompt=True
@@ -219,14 +219,14 @@ class Inferer:
                 **self.error_counts,  # unpacking the dictionary
             }
         )
-        path = self.output_dir + f"/results_{self.model_name}.csv"
-        os.makedirs(self.output_dir, exist_ok=True)
-        print("Saving generated response to prompt to ", path)
-        results_df.to_csv(path, index=False)
+        # path = self.output_dir + f"/results_{self.model_name}.csv"
+        # os.makedirs(self.output_dir, exist_ok=True)
+        # print("Saving generated response to prompt to ", path)
+        # results_df.to_csv(path, index=False)
 
-        self.compute_summary()
+        mean, std, summary = self.compute_summary()
 
-        return results_df
+        return mean, std, summary, results_df
 
     def compute_error_count(self, response):
         _, sig_errors = self.parse_error_counts(response, self.categories[0])
@@ -424,10 +424,12 @@ class Inferer:
         print("Computing summary ...")
         representative_sentences = self.get_representative_sentences(self.completions)
         accuracies = self.compute_accuracy(self.completions)
+        mean = np.mean(self.green_scores)
+        std = np.std(self.green_scores)
 
         summary = f"\n-------------{self.model_name}----------------\n [Summary]: Green average {np.mean(self.green_scores)} and standard variation {np.std(self.green_scores)} \n [Clinically Significant Errors Analyses]: <accuracy>. <representative error>\n\n (a) False report of a finding in the candidate: {accuracies[self.sub_categories[0]]}. \n {representative_sentences[self.sub_categories[0]]} \n\n (b) Missing a finding present in the reference: {accuracies[self.sub_categories[1]]}. \n {representative_sentences[self.sub_categories[1]]} \n\n (c) Misidentification of a finding's anatomic location/position: {accuracies[self.sub_categories[2]]}. \n {representative_sentences[self.sub_categories[2]]} \n\n (d) Misassessment of the severity of a finding: {accuracies[self.sub_categories[3]]}. \n {representative_sentences[self.sub_categories[3]]} \n\n (e) Mentioning a comparison that isn't in the reference: {accuracies[self.sub_categories[4]]}. \n {representative_sentences[self.sub_categories[4]]} \n\n (f) Omitting a comparison detailing a change from a prior study: {accuracies[self.sub_categories[5]]}. {representative_sentences[self.sub_categories[5]]}.\n----------------------------------\n"
 
-        print(summary)
+        return mean, std, summary
 
 
 def GREEN(model_name, refs, hyps, output_dir="."):
@@ -482,7 +484,7 @@ def GREEN(model_name, refs, hyps, output_dir="."):
 
     t = time.time()
 
-    inferer.infer()
+    mean, std, summary, result_df = inferer.infer()
 
     t = time.time() - t
     print("Seconds per example: ", t / len(refs))
@@ -492,6 +494,8 @@ def GREEN(model_name, refs, hyps, output_dir="."):
         print(f"Rank {dist.get_rank()} exiting.")
         dist.destroy_process_group()  # Clean up the distributed processing group
         sys.exit()  # Exit the process
+        
+    return mean, std, summary, result_df
 
 if __name__ == "__main__":
     import time
@@ -512,4 +516,5 @@ if __name__ == "__main__":
 
     model_name = "StanfordAIMI/GREEN-radllama2-7b"
 
-    compute(model_name, refs, hyps, output_dir=".")
+    mean, std, summary, result_df = GREEN(model_name, refs, hyps, output_dir=".")
+    print(summary)

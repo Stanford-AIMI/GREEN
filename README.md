@@ -32,7 +32,7 @@ hyps = [
 
 model_name = "StanfordAIMI/GREEN-radllama2-7b"
 
-mean, std, summary, error_df = GREEN(model_name, refs, hyps)
+mean, std, green_score_list, summary, result_df = GREEN(model_name, refs, hyps)
 
 ```
 ```

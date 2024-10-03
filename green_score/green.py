@@ -226,7 +226,7 @@ class Inferer:
 
         mean, std, summary = self.compute_summary()
 
-        return mean, std, summary, results_df
+        return mean, std, self.green_scores, summary, results_df
 
     def compute_error_count(self, response):
         _, sig_errors = self.parse_error_counts(response, self.categories[0])
@@ -484,7 +484,7 @@ def GREEN(model_name, refs, hyps, output_dir="."):
 
     t = time.time()
 
-    mean, std, summary, result_df = inferer.infer()
+    mean, std, green_score_list, summary, result_df = inferer.infer()
 
     t = time.time() - t
     print("Seconds per example: ", t / len(refs))
@@ -495,7 +495,7 @@ def GREEN(model_name, refs, hyps, output_dir="."):
         dist.destroy_process_group()  # Clean up the distributed processing group
         sys.exit()  # Exit the process
         
-    return mean, std, summary, result_df
+    return mean, std, green_score_list, summary, result_df
 
 if __name__ == "__main__":
     import time
@@ -516,5 +516,5 @@ if __name__ == "__main__":
 
     model_name = "StanfordAIMI/GREEN-radllama2-7b"
 
-    mean, std, summary, result_df = GREEN(model_name, refs, hyps, output_dir=".")
+    mean, std, green_score_list, summary, result_df = GREEN(model_name, refs, hyps, output_dir=".")
     print(summary)

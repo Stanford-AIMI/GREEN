@@ -44,6 +44,8 @@ torchrun --nproc_per_node=2 green_score/green.py
 ```
 Adjust the `--nproc_per_node` to your number of GPUS.
 
+The individual error counts and number of matched findings are summarized in `in result_df`. The function that extracts the error counts from a green model output is [parse_error_counts](https://github.com/Stanford-AIMI/GREEN/blob/474ba6ec83238a9ab3343f159032494c3a19b29b/green_score/green.py#L256). The pattern `r'\(\w\)\s.*?:\s(\d+)'` as proposed by claude or gpt, does not yield the same level of correctness in our experiements.
+
 ## Benchmark
 
 All scores are reported on the Internal Test (GPT-4 Annotation) dataset. 

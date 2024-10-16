@@ -37,7 +37,7 @@ def tqdm_on_main(*args, **kwargs):
     else:
         return kwargs.get('iterable', None)
 
-class GREEN(nn.Module):
+class GREEN:
     def __init__(self, model_name, output_dir="."):
         super().__init__()
         warnings.filterwarnings("ignore", message="A decoder-only architecture is being used*")

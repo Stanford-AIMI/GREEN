@@ -1,0 +1,14 @@
+torch
+transformers
+accelerate
+Pillow
+matplotlib
+sentencepiece
+protobuf
+sentence_transformers
+datasets
+torchvision
+opencv-python
+scipy
+scikit-learn
+pandas

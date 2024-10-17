@@ -22,29 +22,44 @@ from green_score.utils import (
     flatten_values_lists_of_list_dicts_to_dict,
 )
 
+
 def get_rank():
     if not dist.is_initialized():
         return 0
     return dist.get_rank()
 
+
 def is_main_process():
     return get_rank() == 0
+
 
 def tqdm_on_main(*args, **kwargs):
     if is_main_process():
         print("==== Beginning Inference ====")
         return tqdm(*args, **kwargs)
     else:
-        return kwargs.get('iterable', None)
+        return kwargs.get("iterable", None)
+
 
 class GREEN:
-    def __init__(self, model_name, output_dir="."):
+    def __init__(self, model_name, output_dir=".", cpu=False):
         super().__init__()
-        warnings.filterwarnings("ignore", message="A decoder-only architecture is being used*")
+        warnings.filterwarnings(
+            "ignore", message="A decoder-only architecture is being used*"
+        )
         from sklearn.exceptions import ConvergenceWarning
-        warnings.filterwarnings("ignore", category=ConvergenceWarning, message="Number of distinct clusters.*")
-        warnings.filterwarnings("ignore", category=FutureWarning, module="transformers.tokenization_utils_base")
 
+        warnings.filterwarnings(
+            "ignore",
+            category=ConvergenceWarning,
+            message="Number of distinct clusters.*",
+        )
+        warnings.filterwarnings(
+            "ignore",
+            category=FutureWarning,
+            module="transformers.tokenization_utils_base",
+        )
+        self.cpu = cpu
         self.model_name = model_name.split("/")[-1]
         self.output_dir = output_dir
         self.batch_size = 4
@@ -67,19 +82,25 @@ class GREEN:
         self.green_scores = None
         self.error_counts = None
 
-        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1 and not self.cpu:
             if not dist.is_initialized():
                 dist.init_process_group(
                     backend="nccl",
                 )
                 torch.cuda.set_device(dist.get_rank())
                 if dist.get_rank() == 0:
-                    print("Distributed training with", torch.cuda.device_count(), "GPUs")
+                    print(
+                        "Distributed training with", torch.cuda.device_count(), "GPUs"
+                    )
 
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             trust_remote_code=False if "Phi" in model_name else True,
-            device_map={"": "cuda:{}".format(torch.cuda.current_device())},
+            device_map=(
+                {"": "cuda:{}".format(torch.cuda.current_device())}
+                if not self.cpu
+                else {"": "cpu"}
+            ),
             torch_dtype=torch.float16,
         )
         self.model.eval()
@@ -130,12 +151,13 @@ class GREEN:
                     for r, p in zip(examples["reference"], examples["prediction"])
                 ]
             }
+
         dataset = dataset.map(prompting, batched=True)
         return dataset
 
     @torch.inference_mode()
     def infer(self):
-        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1 and not self.cpu:
             dataset_dist = split_dataset_by_node(
                 self.dataset,
                 rank=get_rank(),
@@ -155,7 +177,7 @@ class GREEN:
             local_references.extend(batch["prompt"])
             local_completions.extend(self.get_response(batch))
 
-        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1 and not self.cpu:
             self.completions, self.prompts = gather_processes(
                 local_completions, local_references
             )
@@ -172,6 +194,7 @@ class GREEN:
         return self.process_results()
 
     def tokenize_batch_as_chat(self, batch):
+        local_rank = int(os.environ.get("LOCAL_RANK", 0)) if not self.cpu else "cpu"
         batch = [
             self.tokenizer.apply_chat_template(
                 i, tokenize=False, add_generation_prompt=True
@@ -185,14 +208,17 @@ class GREEN:
             padding=True,
             truncation=True,
             max_length=self.max_length,
-        ).to(int(os.environ.get("LOCAL_RANK", 0)))
+        ).to(local_rank)
 
         return batch
 
     def get_response(self, batch):
         assert "prompt" in batch.keys(), "prompt is not in batch keys"
 
-        batch = [[{"from": "human", "value": prompt}, {"from": "gpt", "value": ""}] for prompt in batch["prompt"]]
+        batch = [
+            [{"from": "human", "value": prompt}, {"from": "gpt", "value": ""}]
+            for prompt in batch["prompt"]
+        ]
 
         batch = self.tokenize_batch_as_chat(batch)
 
@@ -233,8 +259,8 @@ class GREEN:
             {
                 "reference": self.dataset["reference"],
                 "predictions": self.dataset["prediction"],
-                "evaluation": self.completions,
-                "green": self.green_scores,
+                "green_analysis": self.completions,
+                "green_score": self.green_scores,
                 **self.error_counts,
             }
         )
@@ -396,6 +422,7 @@ class GREEN:
 
         return mean, std, summary
 
+
 if __name__ == "__main__":
     refs = [
         "Interstitial opacities without changes.",
@@ -414,9 +441,8 @@ if __name__ == "__main__":
     mean, std, green_score_list, summary, result_df = green_scorer(refs, hyps)
     print(green_score_list)
     print(summary)
-    for index, row in result_df.iterrows():
-        print(f"Row {index}:\n")
-        for col_name in result_df.columns:
-            print(f"{col_name}: {row[col_name]}\n")
-        print('-' * 80)
-
+    # for index, row in result_df.iterrows():
+    #     print(f"Row {index}:\n")
+    #     for col_name in result_df.columns:
+    #         print(f"{col_name}: {row[col_name]}\n")
+    #     print('-' * 80)

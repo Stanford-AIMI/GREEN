@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='green_score',
-    version='0.0.8',
+    version='0.0.11',
     author='Sophie Ostmeier, Jean-Benoit Delbrouck',
     license='MIT',
     long_description=open("README.md").read(),
@@ -25,9 +25,10 @@ setup(
         'scipy',
         'matplotlib',
         'scikit-learn',
-        'pandas'
+        'pandas',
+        'numpy<2',
     ],
-    python_requires='>=3.8,<3.9',
+    python_requires='>=3.9,<=3.10.13',
     packages=find_packages(),
     zip_safe=False
 )

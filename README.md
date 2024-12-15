@@ -16,6 +16,14 @@ git clone https://github.com/Stanford-AIMI/GREEN.git
 cd GREEN
 pip install -e .
 ```
+or 
+```bash
+git clone https://github.com/Stanford-AIMI/GREEN.git
+cd GREEN
+conda create -n green_score python=3.12.1
+conda activate green_score
+pip install -e .
+```
 
 ## Usage
 
@@ -72,6 +80,12 @@ All scores are reported on the Internal Test (GPT-4 Annotation) dataset.
 
 Please see the [error subcategories for (a)-(f)](https://github.com/Stanford-AIMI/GREEN/blob/4e9e939c06761e13d3d520a6434ee7f5c8cded3e/green_score/green.py#L63).
 We are working on benchmarking the new models. 
+
+## Testing
+```bash
+pytest tests/test_repro.py -s
+```
+
 ## Reference
 
 ```bibtex

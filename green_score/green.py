@@ -11,7 +11,6 @@ import numpy as np
 import time
 import sys
 import warnings
-import torch.nn as nn
 
 # Import necessary functions (ensure these are available in your environment)
 from green_score.utils import (
@@ -21,6 +20,11 @@ from green_score.utils import (
     compute_largest_cluster,
     flatten_values_lists_of_list_dicts_to_dict,
 )
+
+from transformers.utils import logging
+
+# Set the logging level for the transformers library to ERROR to suppress warnings that have been resolved
+logging.get_logger("transformers").setLevel(logging.ERROR)
 
 
 def get_rank():
@@ -42,22 +46,12 @@ def tqdm_on_main(*args, **kwargs):
 
 
 class GREEN:
-    def __init__(self, model_name, output_dir=".", cpu=False):
+    def __init__(
+        self, model_name, output_dir=".", cpu=False, compute_summary_stats=True
+    ):
         super().__init__()
         warnings.filterwarnings(
             "ignore", message="A decoder-only architecture is being used*"
-        )
-        from sklearn.exceptions import ConvergenceWarning
-
-        warnings.filterwarnings(
-            "ignore",
-            category=ConvergenceWarning,
-            message="Number of distinct clusters.*",
-        )
-        warnings.filterwarnings(
-            "ignore",
-            category=FutureWarning,
-            module="transformers.tokenization_utils_base",
         )
         self.cpu = cpu
         self.model_name = model_name.split("/")[-1]
@@ -118,7 +112,9 @@ class GREEN:
         self.tokenizer.chat_template = chat_template
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.clean_up_tokenization_spaces = True
-        self.tokenizer.padding_side = "left"
+        assert self.tokenizer.padding_side == "left"
+
+        self.compute_summary_stats = compute_summary_stats
 
     def __call__(self, refs, hyps):
         print("Processing data...making prompts")
@@ -264,8 +260,10 @@ class GREEN:
                 **self.error_counts,
             }
         )
+        mean, std, summary = None, None, None
 
-        mean, std, summary = self.compute_summary()
+        if self.compute_summary_stats:
+            mean, std, summary = self.compute_summary()
 
         return mean, std, self.green_scores, summary, results_df
 
@@ -424,25 +422,4 @@ class GREEN:
 
 
 if __name__ == "__main__":
-    refs = [
-        "Interstitial opacities without changes.",
-        "Interval development of segmental heterogeneous airspace opacities throughout the lungs . No significant pneumothorax or pleural effusion . Bilateral calcified pleural plaques are scattered throughout the lungs . The heart is not significantly enlarged .",
-        "Lung volumes are low, causing bronchovascular crowding. The cardiomediastinal silhouette is unremarkable. No focal consolidation, pleural effusion, or pneumothorax detected. Within the limitations of chest radiography, osseous structures are unremarkable.",
-    ]
-    hyps = [
-        "Interstitial opacities at bases without changes.",
-        "Interval development of segmental heterogeneous airspace opacities throughout the lungs . No significant pneumothorax or pleural effusion . Bilateral calcified pleural plaques are scattered throughout the lungs . The heart is not significantly enlarged .",
-        "Endotracheal and nasogastric tubes have been removed. Changes of median sternotomy, with continued leftward displacement of the fourth inferiomost sternal wire. There is continued moderate-to-severe enlargement of the cardiac silhouette. Pulmonary aeration is slightly improved, with residual left lower lobe atelectasis. Stable central venous congestion and interstitial pulmonary edema. Small bilateral pleural effusions are unchanged.",
-    ]
-
-    model_name = "StanfordAIMI/GREEN-radllama2-7b"
-
-    green_scorer = GREEN(model_name, output_dir=".")
-    mean, std, green_score_list, summary, result_df = green_scorer(refs, hyps)
-    print(green_score_list)
-    print(summary)
-    # for index, row in result_df.iterrows():
-    #     print(f"Row {index}:\n")
-    #     for col_name in result_df.columns:
-    #         print(f"{col_name}: {row[col_name]}\n")
-    #     print('-' * 80)
+    pass

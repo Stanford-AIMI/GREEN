@@ -63,7 +63,9 @@ def compute_kmeans(sentences):
     # normalize the embeddings for equivalent computation of the cosine distance
     embeddings = preprocessing.normalize(embeddings)
     # compute the number of clusters with binary search
-    kmeans = binary_search_optimal_kmeans(embeddings, min_k=0, max_k=len(sentences))
+    kmeans = binary_search_optimal_kmeans(
+        embeddings, min_k=0, max_k=(len(sentences) - 1)
+    )
     return embeddings, kmeans
 
 

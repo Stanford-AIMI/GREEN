@@ -53,8 +53,9 @@ for index, row in result_df.iterrows():
         print(f"{col_name}: {row[col_name]}\n")
     print('-' * 80)
 ```
+For running inference on the ReXVal dataset download `50_samples_gt_and_candidates.csv` to the folder `inference`from [physionet](https://physionet.org/content/rexval-dataset/1.0.0/) and use the following command:
 ```
-torchrun --nproc_per_node=2 green_score/green.py
+torchrun --nproc_per_node=2 inference/run_get_green_analysis.py
 ```
 Adjust the `--nproc_per_node` to your number of GPUS.
 

@@ -1,5 +1,8 @@
 # GREEN: Generative Radiology Report Evaluation and Error Notation
-[[Project Page](https://stanford-aimi.github.io/green.html)][[Paper](https://arxiv.org/pdf/2405.03595)][[Dataset](https://huggingface.co/datasets/StanfordAIMI/GREEN)][[Model](https://huggingface.co/StanfordAIMI/GREEN-RadLlama2-7b)]
+[**Project Page**](https://stanford-aimi.github.io/green.html) | 
+[**Paper**](https://aclanthology.org/2024.findings-emnlp.21/) | 
+[**🤗 Dataset**](https://huggingface.co/datasets/StanfordAIMI/GREEN) | 
+[**🤗 Model**](https://huggingface.co/StanfordAIMI/GREEN-RadLlama2-7b)
 
 ## Abstract
 
@@ -89,10 +92,29 @@ pytest tests/test_repro.py -s
 ## Reference
 
 ```bibtex
-@article{ostmeier2024green,
-    title={GREEN: Generative Radiology Report Evaluation and Error Notation},
-    author={Ostmeier, Sophie and Xu, Justin and Chen, Zhihong and Varma, Maya and Blankemeier, Louis and Bluethgen, Christian and Michalson, Arne Edward and Moseley, Michael and Langlotz, Curtis and Chaudhari, Akshay S and others},
-    journal={arXiv preprint arXiv:2405.03595},
-    year={2024}
+@inproceedings{ostmeier-etal-2024-green,
+    title = "{GREEN}: Generative Radiology Report Evaluation and Error Notation",
+    author = "Ostmeier, Sophie  and
+      Xu, Justin  and
+      Chen, Zhihong  and
+      Varma, Maya  and
+      Blankemeier, Louis  and
+      Bluethgen, Christian  and
+      Md, Arne Edward Michalson  and
+      Moseley, Michael  and
+      Langlotz, Curtis  and
+      Chaudhari, Akshay S  and
+      Delbrouck, Jean-Benoit",
+    editor = "Al-Onaizan, Yaser  and
+      Bansal, Mohit  and
+      Chen, Yun-Nung",
+    booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2024",
+    month = nov,
+    year = "2024",
+    address = "Miami, Florida, USA",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2024.findings-emnlp.21/",
+    doi = "10.18653/v1/2024.findings-emnlp.21",
+    pages = "374--390",
 }
 ```

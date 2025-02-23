@@ -47,16 +47,15 @@ def tqdm_on_main(*args, **kwargs):
 
 class GREEN:
     def __init__(
-        self, model_name, output_dir=".", cpu=False, compute_summary_stats=True
+        self, model_name=None, output_dir=".", cpu=False, compute_summary_stats=True
     ):
         super().__init__()
         warnings.filterwarnings(
             "ignore", message="A decoder-only architecture is being used*"
         )
         self.cpu = cpu
-        self.model_name = model_name.split("/")[-1]
         self.output_dir = output_dir
-        self.batch_size = 4
+        self.batch_size = 8
         self.max_length = 2048
         self.categories = [
             "Clinically Significant Errors",
@@ -86,42 +85,49 @@ class GREEN:
                     print(
                         "Distributed training with", torch.cuda.device_count(), "GPUs"
                     )
+        self.model = None
+        self.tokenizer = None
+        if model_name:
+            self.model_name = model_name.split("/")[-1]
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                trust_remote_code=False if "Phi" in model_name else True,
+                device_map=(
+                    {"": "cuda:{}".format(torch.cuda.current_device())}
+                    if not self.cpu
+                    else {"": "cpu"}
+                ),
+                torch_dtype=torch.float16,
+            )
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            trust_remote_code=False if "Phi" in model_name else True,
-            device_map=(
-                {"": "cuda:{}".format(torch.cuda.current_device())}
-                if not self.cpu
-                else {"": "cpu"}
-            ),
-            torch_dtype=torch.float16,
-        )
-        self.model.eval()
+            self.model.eval()
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            add_eos_token=True,
-            use_fast=True,
-            trust_remote_code=True,
-            padding_side="left",
-        )
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                add_eos_token=True,
+                use_fast=True,
+                trust_remote_code=True,
+                padding_side="left",
+            )
 
-        chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '<|user|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '<|system|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '<|assistant|>\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
+            chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '<|user|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '<|system|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '<|assistant|>\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
 
-        self.tokenizer.chat_template = chat_template
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.clean_up_tokenization_spaces = True
-        assert self.tokenizer.padding_side == "left"
+            self.tokenizer.chat_template = chat_template
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.clean_up_tokenization_spaces = True
+            assert self.tokenizer.padding_side == "left"
 
         self.compute_summary_stats = compute_summary_stats
 
     def __call__(self, refs, hyps):
-        print("Processing data...making prompts")
+        if is_main_process():
+            print("Processing data...making prompts")
+
         dataset = Dataset.from_dict({"reference": refs, "prediction": hyps})
 
         dataset = self.process_data(dataset)
-        print("Done.")
+        if is_main_process():
+            print("Done.")
 
         self.dataset = dataset
 
@@ -130,7 +136,8 @@ class GREEN:
         mean, std, green_scores, summary, results_df = self.infer()
 
         t = time.time() - t
-        print("Seconds per example: ", t / len(refs))
+        if is_main_process():
+            print("Seconds per example: ", t / len(refs))
 
         if not is_main_process():
             print(f"Rank {dist.get_rank()} exiting.")
@@ -153,6 +160,8 @@ class GREEN:
 
     @torch.inference_mode()
     def infer(self):
+        assert self.model is not None and self.tokenizer is not None
+
         if torch.cuda.is_available() and torch.cuda.device_count() > 1 and not self.cpu:
             dataset_dist = split_dataset_by_node(
                 self.dataset,

@@ -14,3 +14,8 @@ protobuf==5.29.1
 scipy
 scikit-learn
 pandas
+# only for training
+deepspeed 
+peft
+flash_attn
+wandb

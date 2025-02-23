@@ -3,3 +3,14 @@
 .mypy_cache
 .venv
 .vscode
+flattened**
+run.py
+results**
+**6_valid**
+**50_samples**
+**slurm**
+**output.log**
+**debug.log**
+**wandb**
+finetune_**
+.cache**

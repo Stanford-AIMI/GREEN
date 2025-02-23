@@ -13,13 +13,15 @@ DISTRIBUTED_ARGS="
     --master_addr $MASTER_ADDR \
     --master_port $MASTER_PORT
 "
+export WANDB_ENTITY="brophie"
+export WANDB_PROJECT="GREEN"
 
 MODEL="StanfordAIMI/RadPhi-2"
-TRAIN_DATA=".../data/GREEN_V3/train.json"
-VAL_DATA=".../data/GREEN_V3/val.json"
-output_dir=.../checkpoints/green_models/radphi2_green_v3
+TRAIN_DATA="/dataNAS/people/sostm/data/GREEN_V3/train.json"
+VAL_DATA="/dataNAS/people/sostm/data/GREEN_V3/val.json"
+output_dir=/dataNAS/people/sostm/checkpoints/green_models/radphi2_green_v3_justin
 
-torchrun $DISTRIBUTED_ARGS execution/training/finetune.py \
+torchrun $DISTRIBUTED_ARGS training/finetune.py \
     --model_name_or_path $MODEL \
     --data_path "$TRAIN_DATA" \
     --eval_data_path "$VAL_DATA" \
@@ -46,5 +48,5 @@ torchrun $DISTRIBUTED_ARGS execution/training/finetune.py \
     --lazy_preprocess True \
     --group_by_length True \
     --dataloader_num_workers 4 \
-    --deepspeed ds_config_zero3.json \
-    --resume_from_checkpoint ${output_dir}/checkpoint-1000 \
+    --deepspeed training/ds_config_zero3.json \
+    # --resume_from_checkpoint ${output_dir}/checkpoint-1000 \

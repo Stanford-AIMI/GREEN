@@ -151,8 +151,6 @@ def fuse_fine_grained_errors(llm_rating_df, radio_df, path):
     radio_df = find_closest_radiologist(radio_df, sig="sig")
     radio_df = find_closest_radiologist(radio_df, sig="insig")
 
-    # radio_df = pd.read_csv("/p/home/jusers/delbrouck1/juwels/delbrouck1_juwelsbooster/reward_model/results_gpt4/rexval_data/total_mean_results_gpt4_ratings.csv")
-
     print("Significant Error")
     compute_metrics(radio_df, path, sig="sig")
     # make dataframe from dict
@@ -204,7 +202,6 @@ def find_closest_radiologist(df, sig="sig"):
     assert (
         f"{sig}_nearest_llm_error_difference" in df.columns
     ), f"{sig}_nearest_llm_error_difference not in columns"
-    # df[f"{sig}_error"] = abs(df[f"{sig}_mean_errors"] - df[f"{sig}_llm_errors"])
 
     return df
 
@@ -212,7 +209,6 @@ def find_closest_radiologist(df, sig="sig"):
 def compute_metrics(df, path, sig="sig"):
     print(df.head())
     print(df.columns)
-    # Group by 'error_category' and calculate the mean of 'sig_nearest_error'
     if sig == "total":
         df["total_nearest_llm_error_difference"] = (
             df["sig_nearest_llm_error_difference"]
@@ -287,8 +283,6 @@ def compute_metrics(df, path, sig="sig"):
 
     df_metrics = df_metrics.round(decimals=2)
     df_metrics_nearest = df_metrics_nearest.round(decimals=2)
-    # print(df_metrics)
-    # print(df_metrics_nearest)
 
     new_path = path.rsplit("/", 1)[0]
     df_metrics.to_csv(f"{new_path}/{sig}_error_metrics.csv")

@@ -55,7 +55,7 @@ class GREEN:
         )
         self.cpu = cpu
         self.output_dir = output_dir
-        self.batch_size = 4
+        self.batch_size = 8
         self.max_length = 2048
         self.categories = [
             "Clinically Significant Errors",

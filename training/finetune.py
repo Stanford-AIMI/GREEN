@@ -47,7 +47,7 @@ class TrainingArguments(transformers.TrainingArguments):
     )
     use_lora: bool = False
     attn_implementation: str = "flash_attention_2"
-    gradient_checkpointing_kwargs = {'use_reentrant': False}
+    gradient_checkpointing_kwargs = {"use_reentrant": False}
     resume_from_checkpoint: bool = False
 
 
@@ -58,7 +58,15 @@ class LoraArguments:
     lora_dropout: float = 0.05
     lora_target_modules: List[str] = field(
         # default_factory=lambda: ["c_attn", "attn.c_proj", "w1", "w2"]
-        default_factory=lambda: ["gate_proj", "down_proj", "up_proj", "q_proj", "v_proj", "k_proj", "o_proj"]
+        default_factory=lambda: [
+            "gate_proj",
+            "down_proj",
+            "up_proj",
+            "q_proj",
+            "v_proj",
+            "k_proj",
+            "o_proj",
+        ]
     )
     lora_weight_path: str = ""
     lora_bias: str = "none"
@@ -109,7 +117,9 @@ def rank0_print(*args):
         print(*args)
 
 
-def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: str, bias="none"):
+def safe_save_model_for_hf_trainer(
+    trainer: transformers.Trainer, output_dir: str, bias="none"
+):
     """Collects the state dict and dump to disk."""
     # check if zero3 mode enabled
     if deepspeed.is_deepspeed_zero3_enabled():
@@ -126,30 +136,43 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
 
 
 def preprocess(
-        sources,
-        tokenizer: transformers.PreTrainedTokenizer,
-        max_len: int,
-        system_message: str = "You are a helpful assistant."
+    sources,
+    tokenizer: transformers.PreTrainedTokenizer,
+    max_len: int,
+    system_message: str = "You are a helpful assistant.",
 ) -> Dict:
     roles = {"human": "<|user|>", "gpt": "<|assistant|>"}
     input_ids, targets = [], []
     for i, source in enumerate(sources):
-        system = [{"from": "system", "value": system_message if "system" not in source else source["system"]}]
+        system = [
+            {
+                "from": "system",
+                "value": system_message if "system" not in source else source["system"],
+            }
+        ]
         if roles[source[0]["from"]] != roles["human"]:
             source = source[1:]
         assert len(source) >= 2
-        input_id = tokenizer.apply_chat_template(system + source, return_tensors="pt")[0]
+        input_id = tokenizer.apply_chat_template(system + source, return_tensors="pt")[
+            0
+        ]
         target = torch.full(input_id.shape, -100, dtype=torch.int64)
         for i in range(1, len(source), 2):
             assert source[i]["from"] == "gpt"
             start_idx = len(
-                tokenizer.apply_chat_template(system + source[:i], add_generation_prompt=True, return_tensors="pt")[0]
+                tokenizer.apply_chat_template(
+                    system + source[:i], add_generation_prompt=True, return_tensors="pt"
+                )[0]
             )
             end_idx = len(
-                tokenizer.apply_chat_template(system + source[:i + 1], return_tensors="pt")[0]
+                tokenizer.apply_chat_template(
+                    system + source[: i + 1], return_tensors="pt"
+                )[0]
             )
             target[start_idx:end_idx] = input_id[start_idx:end_idx]
-        input_id = input_id.tolist() + [tokenizer.pad_token_id] * (max_len - len(input_id))
+        input_id = input_id.tolist() + [tokenizer.pad_token_id] * (
+            max_len - len(input_id)
+        )
         target = target.tolist() + [IGNORE_TOKEN_ID] * (max_len - len(target))
         input_ids.append(input_id[:max_len])
         targets.append(target[:max_len])
@@ -165,7 +188,9 @@ def preprocess(
 class LazySupervisedDataset(Dataset):
     """Dataset for supervised fine-tuning."""
 
-    def __init__(self, raw_data, tokenizer: transformers.PreTrainedTokenizer, max_len: int):
+    def __init__(
+        self, raw_data, tokenizer: transformers.PreTrainedTokenizer, max_len: int
+    ):
         super(LazySupervisedDataset, self).__init__()
         self.tokenizer = tokenizer
         self.max_len = max_len
@@ -183,7 +208,9 @@ class LazySupervisedDataset(Dataset):
         length_list = []
         for sample in self.raw_data:
             if "conv" in sample:
-                text = " ".join([conv["value"] for conv in sample['conv'] if conv["from"] == "gpt"])
+                text = " ".join(
+                    [conv["value"] for conv in sample["conv"] if conv["from"] == "gpt"]
+                )
             else:
                 text = sample["response"]
             num_img_tokens = 256 * text.count("<|img|>")
@@ -205,8 +232,11 @@ class LazySupervisedDataset(Dataset):
         else:
             assert "prompt" in self.raw_data[i]
             tokenized = self.tokenizer(
-                self.raw_data[i]["prompt"], max_length=self.max_len, padding="max_length", truncation=True,
-                return_tensors="pt"
+                self.raw_data[i]["prompt"],
+                max_length=self.max_len,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt",
             )
             input_ids = tokenized["input_ids"][0]
             labels = input_ids.clone()
@@ -222,7 +252,9 @@ class LazySupervisedDataset(Dataset):
 
 
 def make_supervised_data_module(
-        tokenizer: transformers.PreTrainedTokenizer, data_args, max_len,
+    tokenizer: transformers.PreTrainedTokenizer,
+    data_args,
+    max_len,
 ) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
     dataset_cls = LazySupervisedDataset
@@ -254,7 +286,11 @@ class CustomTrainer(Trainer):
         # Build the sampler.
         if self.args.group_by_length:
             lengths = self.train_dataset.lengths
-            model_input_name = self.tokenizer.model_input_names[0] if self.tokenizer is not None else None
+            model_input_name = (
+                self.tokenizer.model_input_names[0]
+                if self.tokenizer is not None
+                else None
+            )
             return LengthGroupedSampler(
                 self.args.train_batch_size * self.args.gradient_accumulation_steps,
                 dataset=self.train_dataset,
@@ -279,7 +315,9 @@ def train():
         lora_args,
     ) = parser.parse_args_into_dataclasses()
 
-    if getattr(training_args, 'deepspeed', None) and getattr(lora_args, 'q_lora', False):
+    if getattr(training_args, "deepspeed", None) and getattr(
+        lora_args, "q_lora", False
+    ):
         training_args.distributed_state.distributed_type = DistributedType.DEEPSPEED
 
     local_rank = training_args.local_rank
@@ -293,16 +331,21 @@ def train():
             logging.warning("FSDP or ZeRO3 are not incompatible with QLoRA.")
 
     # Load model and tokenizer
-    model_config, model_class, tokenizer_class, training_args = infer_model_class_and_trainable_parameters(
-        training_args
+    model_config, model_class, tokenizer_class, training_args = (
+        infer_model_class_and_trainable_parameters(training_args)
     )
-    
+
     import subprocess
 
     def print_hf_account():
         try:
             # Execute the "huggingface-cli whoami" command
-            result = subprocess.run(["huggingface-cli", "whoami"], check=True, capture_output=True, text=True)
+            result = subprocess.run(
+                ["huggingface-cli", "whoami"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
             # Print the output of the command
             print(result.stdout)
         except subprocess.CalledProcessError as e:
@@ -310,9 +353,12 @@ def train():
             print(f"An error occurred: {e}")
         except FileNotFoundError:
             # This error is thrown if the huggingface-cli is not installed
-            print("Hugging Face CLI is not installed. Please install it to run this command.")
+            print(
+                "Hugging Face CLI is not installed. Please install it to run this command."
+            )
+
     print_hf_account()
-    
+
     config = model_config.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
@@ -323,8 +369,11 @@ def train():
         config=config,
         cache_dir=training_args.cache_dir,
         device_map=device_map,
-        quantization_config=GPTQConfig(bits=4, disable_exllama=True)
-        if training_args.use_lora and lora_args.q_lora else None,
+        quantization_config=(
+            GPTQConfig(bits=4, disable_exllama=True)
+            if training_args.use_lora and lora_args.q_lora
+            else None
+        ),
         torch_dtype=torch.bfloat16,
         attn_implementation=training_args.attn_implementation,
     )
@@ -337,6 +386,7 @@ def train():
         trust_remote_code=True,
     )
     tokenizer.pad_token_id = tokenizer.unk_token_id
+    tokenizer.chat_template = "{% for message in messages %}\n{% if message['from'] == 'human' %}\n{{ '<|user|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'system' %}\n{{ '<|system|>\n' + message['value'] + eos_token }}\n{% elif message['from'] == 'gpt' %}\n{{ '<|assistant|>\n'  + message['value'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
 
     if training_args.use_lora:
         if lora_args.q_lora or "chat" in model_args.model_name_or_path.lower():
@@ -350,11 +400,13 @@ def train():
             lora_dropout=lora_args.lora_dropout,
             bias=lora_args.lora_bias,
             task_type="CAUSAL_LM",
-            modules_to_save=modules_to_save  # This argument serves for adding new tokens.
+            modules_to_save=modules_to_save,  # This argument serves for adding new tokens.
         )
         if lora_args.q_lora:
             model = prepare_model_for_kbit_training(
-                model, use_gradient_checkpointing=training_args.gradient_checkpointing, gradient_checkpointing_kwargs=training_args.gradient_checkpointing_kwargs
+                model,
+                use_gradient_checkpointing=training_args.gradient_checkpointing,
+                gradient_checkpointing_kwargs=training_args.gradient_checkpointing_kwargs,
             )
 
         model = get_peft_model(model, lora_config)
@@ -376,9 +428,11 @@ def train():
     trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
     trainer.save_state()
 
-    safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir, bias=lora_args.lora_bias)
+    safe_save_model_for_hf_trainer(
+        trainer=trainer, output_dir=training_args.output_dir, bias=lora_args.lora_bias
+    )
 
-    trainer.push_to_hub('')
+    trainer.push_to_hub("")
 
 
 if __name__ == "__main__":

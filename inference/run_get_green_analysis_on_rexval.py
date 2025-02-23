@@ -1,10 +1,10 @@
 from green_score import GREEN
-from utils import flatten_df_test_set
+from utils import flatten_df_test_set, fuse_fine_grained_errors
 import pandas as pd
 import os
 import sys
 
-import argparse  # Import argparse for command-line arguments
+import argparse
 
 # Setup argparse for command-line arguments
 parser = argparse.ArgumentParser(description="Run the GREEN scoring model.")
@@ -29,6 +29,7 @@ model_name = args.model_name
 #
 # PrunaAI/StanfordAIMI-GREEN-RadLlama2-7b-bnb-4bit-smashed
 # 3.74193622469902
+# /dataNAS/people/sostm/checkpoints/green_models/radphi2_green_v3/checkpoint-3040
 
 
 # this is the rexval dataset
@@ -60,5 +61,31 @@ path = f"results_{model_name.rsplit('/')[-1]}/rexval_data"
 os.makedirs(path, exist_ok=True)
 df.to_csv(f"{path}/responses_test.csv", index=False)
 
-print(f"Please run")
-print(f"python inference/run_compare_to_rexval.py --model_name {model_name}")
+# Use the model_name from the command line
+model = model_name.rsplit("/")[-1]
+
+root = "."
+
+print(f"Analyzing model {model}")
+root_model = f"{root}/results_{model}"
+response_file_path = f"{root_model}/rexval_data/responses_test.csv"
+radio_path = f"inference/total_mean_error_radiologist_categories.csv"
+
+if not os.path.exists(response_file_path):
+    ValueError(f"File {response_file_path} does not exist")
+
+######### for quick test set analysis ############
+# create mapping
+original_df = pd.read_csv(f"inference/50_samples_gt_and_candidates.csv")
+study_id = original_df["study_id"]
+study_number = [i for i in range(len(study_id))]
+# make dict
+study_dict = dict(zip(study_id, study_number))
+
+print("looking at file", response_file_path)
+data = pd.read_csv(response_file_path)
+if not "study_number" in data.columns:
+    data["study_number"] = data["study_id"].map(study_dict)
+rater = pd.read_csv(radio_path)
+
+fuse_fine_grained_errors(data, rater, response_file_path)

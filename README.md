@@ -23,7 +23,7 @@ or
 ```bash
 git clone https://github.com/Stanford-AIMI/GREEN.git
 cd GREEN
-conda create -n green_score python=3.11
+conda create -n green_score python=3.12.1
 conda activate green_score
 pip install -e .
 ```

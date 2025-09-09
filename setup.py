@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="green_score",
-    version="0.0.11",
+    version="0.0.12",
     author="Sophie Ostmeier, Jean-Benoit Delbrouck",
     license="MIT",
     long_description=open("README.md").read(),

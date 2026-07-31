@@ -1,0 +1,17 @@
+torch==2.2.2
+torchvision==0.17.2
+transformers==4.40.0
+numpy<2
+accelerate>=0.30
+pillow>=10.3
+sentencepiece>=0.2
+sentence-transformers>=3.0
+datasets>=3.2
+opencv-python>=4.10
+dill>=0.3.8
+protobuf>=5.29
+scipy
+matplotlib
+scikit-learn
+pandas
+pytest

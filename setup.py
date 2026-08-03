@@ -13,16 +13,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        # STEP 1: torch unpinned from 2.2.2 → 2.4/2.5 window.
-        # Ceiling at <2.6 is deliberate: torch 2.6 flipped torch.load to
-        # weights_only=True, which breaks transformers 4.40 checkpoint loading.
-        # Lift this ceiling in step 2, together with the transformers bump.
         "torch>=2.4,<2.6",
         "torchvision>=0.19,<0.21",
-        # still held
         "transformers==4.40.0",
         "numpy<2",
-        # loosened previously
         "accelerate>=0.30",
         "pillow>=10.3",
         "sentencepiece>=0.2",

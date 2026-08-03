@@ -32,6 +32,7 @@ setup(
         "scikit-learn",
         "pandas",
         "pytest",
+        "hf_transfer"
     ],
     python_requires=">=3.9,<3.13",
     packages=find_packages(),

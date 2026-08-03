@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="green_score",
-    version="0.1.0",
+    version="0.0.13",
     author="Sophie Ostmeier, Jean-Benoit Delbrouck",
     license="MIT",
     long_description=open("README.md").read(),
@@ -13,14 +13,16 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        # Floors, not pins — this is a library, so users need room to
-        # resolve against their own environments.
-        "torch>=2.6",
-        "torchvision>=0.21",       # first version with cp313 wheels
-        # transformers held below v5: v5 changes the dtype default to
-        # "auto", which can silently shift scores. Separate decision.
-        "transformers>=4.46,<5",
-        "numpy>=1.24",
+        # STEP 1: torch unpinned from 2.2.2 → 2.4/2.5 window.
+        # Ceiling at <2.6 is deliberate: torch 2.6 flipped torch.load to
+        # weights_only=True, which breaks transformers 4.40 checkpoint loading.
+        # Lift this ceiling in step 2, together with the transformers bump.
+        "torch>=2.4,<2.6",
+        "torchvision>=0.19,<0.21",
+        # still held
+        "transformers==4.40.0",
+        "numpy<2",
+        # loosened previously
         "accelerate>=0.30",
         "pillow>=10.3",
         "sentencepiece>=0.2",
@@ -33,12 +35,10 @@ setup(
         "matplotlib",
         "scikit-learn",
         "pandas",
-        "hf_transfer",
+        "pytest",
+        "hf_transfer"
     ],
-    extras_require={
-        "dev": ["pytest>=8.0"],
-    },
-    python_requires=">=3.10",
-    packages=find_packages(exclude=["tests", "tests.*"]),
+    python_requires=">=3.9,<3.13",
+    packages=find_packages(),
     zip_safe=False,
 )

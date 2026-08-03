@@ -2,23 +2,27 @@ from setuptools import setup, find_packages
 
 setup(
     name="green_score",
-    version="0.0.12",
+    version="0.0.13",
     author="Sophie Ostmeier, Jean-Benoit Delbrouck",
     license="MIT",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        # held for now — loosen one at a time after this passes
-        "torch==2.2.2",
-        "torchvision==0.17.2",
+        # STEP 1: torch unpinned from 2.2.2 → 2.4/2.5 window.
+        # Ceiling at <2.6 is deliberate: torch 2.6 flipped torch.load to
+        # weights_only=True, which breaks transformers 4.40 checkpoint loading.
+        # Lift this ceiling in step 2, together with the transformers bump.
+        "torch>=2.4,<2.6",
+        "torchvision>=0.19,<0.21",
+        # still held
         "transformers==4.40.0",
         "numpy<2",
-        # loosened
+        # loosened previously
         "accelerate>=0.30",
         "pillow>=10.3",
         "sentencepiece>=0.2",

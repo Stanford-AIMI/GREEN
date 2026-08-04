@@ -11,16 +11,6 @@ Evaluating radiology reports is a challenging problem as factual correctness is 
 ## Installation
 Python 3.12.1 (for now)
 ```bash
-pip install green_score
-```
-or
-```bash
-git clone https://github.com/Stanford-AIMI/GREEN.git
-cd GREEN
-pip install -e .
-```
-or 
-```bash
 git clone https://github.com/Stanford-AIMI/GREEN.git
 cd GREEN
 conda create -n green_score python=3.12.1
